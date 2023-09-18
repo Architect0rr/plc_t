@@ -344,7 +344,7 @@ class gui:
 
         # setpoints
         self.setpoints_choose = None
-        self.info_area_setpoints = dict()
+        self.info_area_setpoints: Dict[str, Any] = dict()
         self.info_area_setpoints["frame"] = tkinter.Frame(self.info_area, relief="solid", borderwidth=1)
         # self.info_area_setpoints['frame'].grid(column=0,row=0)
         self.info_area_setpoints["frame"].pack(side=tkinter.LEFT)
@@ -438,7 +438,7 @@ class gui:
             self.debug_infos.pack()
             plc_tools.plclogclasses.LabelLogHandler.set_out(self.lh, self.debugtext)
 
-    def debugprint(self, o: str, prefix: str = "", t: int = 0):
+    def debugprint(self, o: str):
         log.info(o)
 
     def callback(self):
@@ -802,7 +802,7 @@ class gui:
     def choose_next_setpoint(self, event=None):
         i = self.setpoints_choose
         if i is not None:
-            i = min(len(self.setpoints.sections()) - 1, i + 1)
+            i = min((len(self.setpoints.sections()) - 1, i + 1))
             if i != self.setpoints_choose:
                 self.info_area_setpoints["next setpoint"].flash()
                 self.choose_setpoint(i=i)

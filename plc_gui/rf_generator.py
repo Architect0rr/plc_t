@@ -13,17 +13,15 @@ import re
 import string
 import tkinter.filedialog
 import tkinter
-from typing import Callable
+from typing import Callable, List, Dict, Any
 
 from . import read_config_file
+from plc_tools.conversion import b2onoff
+from .class_rf_generator import class_rf_generator
 
 log = logging.getLogger("plc.rf_gen")
 log.setLevel(logging.DEBUG)
 log.addHandler(logging.NullHandler())
-
-# from plc_tools.conversion import *
-
-# from .class_rf_generator import *
 
 
 class rf_generator_gui:
@@ -33,7 +31,7 @@ class rf_generator_gui:
     Date: 2012-08-26
     """
 
-    def __init__(self, config: read_config_file.read_config_file, pw: tkinter.Frame, debugprint, controller):
+    def __init__(self, config: read_config_file.read_config_file, pw: tkinter.Frame, debugprint: Callable[[str], None], controller: Dict[str, Any]) -> None:
         """__init__(self,config=None,pw=None,debugprint=None,controller=None)
 
         create gui for rf_generator
@@ -60,10 +58,10 @@ class rf_generator_gui:
         else:
             self.RF_only_master = False
         # init
-        self.generator = [None, None, None]
+        self.generator: List[class_rf_generator] = []
+        # ['RF-Generator 1','RF-Generator 2','RF-Generator 3']
         for g in range(3):
-            # ['RF-Generator 1','RF-Generator 2','RF-Generator 3']
-            self.generator[g] = class_rf_generator()
+            self.generator.append(class_rf_generator())
             if self.config.values.get("RF-Generator %d" % (g + 1), "power_controller") == "-1":
                 self.generator[g].exists = False
             else:
@@ -104,7 +102,7 @@ class rf_generator_gui:
         self.stop_controller_button = tkinter.Button(self.power_frame, text="close RS232 (rfgc)", command=self.controller["rfgc"].stop_request, padx=self.padx, pady=self.pady)
         self.stop_controller_button.pack()
         # Pattern
-        self.pattern = dict()
+        self.pattern: Dict[str, Any] = {}
         self.pattern_file = None  # will be set later as set in config
         self.pattern_config = None
         self.pattern_controller_var = tkinter.StringVar()
@@ -233,9 +231,9 @@ class rf_generator_gui:
                 for i in range(4):
                     try:
                         a = int(self.generator[g].channel[i].current_status.get())
-                    except:
+                    except Exception:
                         a = None
-                    if a == None:
+                    if a is None:
                         log.warning("ERROR: do not understand current to set in channel %d" % cn)
                         self.generator[g].channel[i].current_status.set(self.controller["rfgc"].generator[g].actualvalue_channel[i].current)
                     else:
@@ -255,9 +253,9 @@ class rf_generator_gui:
                 for i in range(4):
                     try:
                         a = int(self.generator[g].channel[i].phase_status.get())
-                    except:
+                    except Exception:
                         a = None
-                    if a == None:
+                    if a is None:
                         log.warning("ERROR: do not understand phase to set in channel %d" % cn)
                         self.generator[g].channel[i].phase_status.set(self.controller["rfgc"].generator[g].actualvalue_channel[i].phase)
                     else:
@@ -285,11 +283,11 @@ class rf_generator_gui:
             if len(f) > 0:
                 self.pattern_file = f
                 self.pattern_load_file()
-        except:
+        except Exception:
             pass
 
     def pattern_load_file(self):
-        if self.pattern_file != None:
+        if self.pattern_file is not None:
             self.pattern_config = configparser.ConfigParser()
             self.pattern_config.read(os.path.expanduser(self.pattern_file))
             if (
@@ -402,7 +400,7 @@ class rf_generator_gui:
             if self.generator[g].exists:
                 for i in range(4):
                     if self.generator[g].channel[i].choose.get() == 1:
-                        if (self.RF_only_master == False) or (g == 0):
+                        if (self.RF_only_master is False) or (g == 0):
                             self.controller["rfgc"].generator[g].setpoint_rf_onoff = True
 
     def combined_change_button4_cmd(self):
@@ -411,7 +409,7 @@ class rf_generator_gui:
             if self.generator[g].exists:
                 for i in range(4):
                     if self.generator[g].channel[i].choose.get() == 1:
-                        if (self.RF_only_master == False) or (g == 0):
+                        if (self.RF_only_master is False) or (g == 0):
                             self.controller["rfgc"].generator[g].setpoint_rf_onoff = False
 
     def combined_change_button5_cmd(self):
@@ -448,16 +446,16 @@ class rf_generator_gui:
             if self.controller["rfgc"].generator[g].exists:
                 self.controller["rfgc"].generator[g].setpoint_ignite_plasma = True
 
-    def power_0(self):
+    def power_0(self) -> None:
         self.power(0)
 
-    def power_1(self):
+    def power_1(self) -> None:
         self.power(1)
 
-    def power_2(self):
+    def power_2(self) -> None:
         self.power(2)
 
-    def power_3(self):
+    def power_3(self) -> None:
         self.power(4)
 
     def power(self, g):
