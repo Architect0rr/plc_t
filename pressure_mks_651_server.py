@@ -21,7 +21,7 @@ import sys
 import tempfile
 import threading
 import time
-from typing import 
+from typing import Literal, Dict, List
 
 import plc_tools.server_base
 from plc_tools.plclogclasses import QueuedWatchedFileHandler
@@ -39,28 +39,49 @@ class controller_class:
 
     def __init__(self, log: logging.Logger, datalog: logging.Logger, device: str, updatedelay: float = 1):
         global controller
-        self.log = log
-        self.datalog = datalog
-        self.devicename = device
-        self.deviceopen = False
-        self.boudrate = 9600
-        self.databits = serial.EIGHTBITS
-        self.parity = serial.PARITY_NONE
-        self.stopbits = serial.STOPBITS_ONE  # serial.STOPBITS_ONE_POINT_FIVE serial.STOPBITS_TWO
-        self.readtimeout = 1
-        self.writetimeout = 1
-        self.device = serial.Serial(
+        self.log: logging.Logger = log
+        self.datalog: logging.Logger = datalog
+        self.devicename: str = device
+        self.deviceopen: bool = False
+        self.boudrate: int = 9600
+        self.databits: Literal[8] = serial.EIGHTBITS
+        self.parity: Literal["N"] = serial.PARITY_NONE
+        self.stopbits: Literal[1] = serial.STOPBITS_ONE  # serial.STOPBITS_ONE_POINT_FIVE serial.STOPBITS_TWO
+        self.readtimeout: int = 1
+        self.writetimeout: int = 1
+        self.device: serial.Serial = serial.Serial(
             port=None, baudrate=self.boudrate, bytesize=self.databits, parity=self.parity, stopbits=self.stopbits, timeout=self.readtimeout, write_timeout=self.writetimeout
         )
         self.device.port = self.devicename
-        self.communication_problem = 0
-        self.lock = threading.Lock()
-        self.updatelock = threading.Lock()
-        self.set_actualvalue_to_the_device_lock = threading.Lock()
-        self.get_actualvalue_from_the_device_lock = threading.Lock()
-        self.write_to_device_lock = threading.Lock()
-        self.full_scale_values = [0.1, 0.2, 0.5, 1.0, 2.0, 5.0, 10.0, 50.0, 100.0, 500.0, 1000.0, 5000.0, 10000.0, 1.3332, 2.6664, 13.332, 133.32, 1333.2, 6666.0, 13332.0]
-        self.unit_list = ["00-Torr", "01-mTorr", "02-mbar", "03-ubar", "04-KPa", "05-Pa", "06-cmH2O", "07-inH2O"]
+        self.communication_problem: int = 0
+        self.lock: threading.Lock = threading.Lock()
+        self.updatelock: threading.Lock = threading.Lock()
+        self.set_actualvalue_to_the_device_lock: threading.Lock = threading.Lock()
+        self.get_actualvalue_from_the_device_lock: threading.Lock = threading.Lock()
+        self.write_to_device_lock: threading.Lock = threading.Lock()
+        self.full_scale_values: List[float] = [
+            0.1,
+            0.2,
+            0.5,
+            1.0,
+            2.0,
+            5.0,
+            10.0,
+            50.0,
+            100.0,
+            500.0,
+            1000.0,
+            5000.0,
+            10000.0,
+            1.3332,
+            2.6664,
+            13.332,
+            133.32,
+            1333.2,
+            6666.0,
+            13332.0,
+        ]
+        self.unit_list: List[str] = ["00-Torr", "01-mTorr", "02-mbar", "03-ubar", "04-KPa", "05-Pa", "06-cmH2O", "07-inH2O"]
         # 'M' is key, is command/first byte of the answer string from the device
         # 'R37' is the question to get the status of the device -> write R37 -> answer: MXYZ
         # XYZ string is decomposed using the decompose_m_string routine and sets the status of
@@ -73,16 +94,16 @@ class controller_class:
         # according to that to write a new 'F' and check whether its value is updated:
         # self.write_to_device(self.actualvalue['F'][1](->data),'F'(->command),self.actualvalue['F'](->question))
         # writes 'F' + data and 'R34' to the device and returns the answer which is 01...07
-        self.actualvalue = {
+        self.actualvalue: Dict[str, List[str]] = {
             "M": ["R37", ""],
-            "O": [None, ""],
-            "C": [None, ""],
-            "H": [None, ""],
-            "D1": [None, ""],
-            "D2": [None, ""],
-            "D3": [None, ""],
-            "D4": [None, ""],
-            "D5": [None, ""],
+            "O": ["", ""],  # "O": [None, ""],
+            "C": ["", ""],  # "C": [None, ""],
+            "H": ["", ""],  # "H": [None, ""],
+            "D1": ["", ""],  # "D1": [None, ""],
+            "D2": ["", ""],  # "D2": [None, ""],
+            "D3": ["", ""],  # "D3": [None, ""],
+            "D4": ["", ""],  # "D4": [None, ""],
+            "D5": ["", ""],  # "D5": [None, ""],
             "T1": ["R26", ""],
             "T2": ["R27", ""],
             "T3": ["R28", ""],
@@ -107,19 +128,19 @@ class controller_class:
             "M4": ["R49", ""],
             "M5": ["R50", ""],
         }
-        self.pressure = ""
-        self.vent = ""
+        self.pressure: str = ""
+        self.vent: str = ""
         self.get_actualvalue_from_the_device()
-        self.setpoint = {
+        self.setpoint: Dict[str, List[str]] = {
             "M": ["R37", ""],
-            "O": [None, ""],
-            "C": [None, ""],
-            "H": [None, ""],
-            "D1": [None, ""],
-            "D2": [None, ""],
-            "D3": [None, ""],
-            "D4": [None, ""],
-            "D5": [None, ""],
+            "O": ["", ""],  # "O": [None, ""],
+            "C": ["", ""],  # "C": [None, ""],
+            "H": ["", ""],  # "H": [None, ""],
+            "D1": ["", ""],  # "D1": [None, ""],
+            "D2": ["", ""],  # "D2": [None, ""],
+            "D3": ["", ""],  # "D3": [None, ""],
+            "D4": ["", ""],  # "D4": [None, ""],
+            "D5": ["", ""],  # "D5": [None, ""],
             "T1": ["R26", ""],
             "T2": ["R27", ""],
             "T3": ["R28", ""],
@@ -144,20 +165,20 @@ class controller_class:
             "M4": ["R49", ""],
             "M5": ["R50", ""],
         }
-        for i in self.actualvalue:
-            self.setpoint[i][1] = self.actualvalue[i][1]
+        for key in self.actualvalue.keys():
+            self.setpoint[key][1] = self.actualvalue[key][1]
         self.set_actualvalue_to_the_device()
-        self.updatedelay = updatedelay  # seconds
-        self.running = True
-        self.lastupdate = None
-        self.updatetimer = threading.Timer(self.updatedelay, self.update)
+        self.updatedelay: float = updatedelay  # seconds
+        self.running: bool = True
+        self.lastupdate: float = 0
+        self.updatetimer: threading.Timer = threading.Timer(self.updatedelay, self.update)
         self.updatetimer.start()
 
     def wrd(self, data):
         data = data.encode() if data is not None else None
-        return self.device.write(data)
+        return self.device.write(data)  # type: ignore
 
-    def update(self):
+    def update(self) -> None:
         """update
 
         will update every updatedelay seconds
@@ -167,7 +188,7 @@ class controller_class:
         self.updatetimer.cancel()
         self.updatelock.acquire()  # lock for running
         if self.running:
-            if self.lastupdate == None:
+            if self.lastupdate is None:
                 t = self.updatedelay
             else:
                 t = max(0.000001, self.updatedelay + self.updatedelay - (time.time() - self.lastupdate))
@@ -177,33 +198,32 @@ class controller_class:
             self.set_actualvalue_to_the_device()
         self.updatelock.release()  # release the lock
 
-    def shutdown(self):
+    def shutdown(self) -> None:
         self.log.info("shutdown")
         self.running = False
         try:
             self.updatetimer.cancel()
-        except:
+        except Exception:
             pass
-        if self.device.isOpen():
+        if self.device.is_open:
             self.device.close()
             self.deviceopen = False
 
-    def get_actualvalue_from_the_device(self):
+    def get_actualvalue_from_the_device(self) -> None:
         self.get_actualvalue_from_the_device_lock.acquire()  # lock to read data
-        s = ""
         # print self.write_to_device("@253GC?;FF")
-        for i in self.actualvalue:
-            if self.actualvalue[i][0]:
-                if i == "M":
-                    stor = self.write_to_device(None, i, self.actualvalue[i][0])
+        for key in self.actualvalue.keys():
+            if self.actualvalue[key][0]:
+                if key == "M":
+                    stor = self.write_to_device3(key, self.actualvalue[key][0])
                     self.decompose_m_string(stor)
                 else:
-                    self.actualvalue[i][1] = self.write_to_device(None, i, self.actualvalue[i][0])
-        self.pressure = self.write_to_device(None, "P", "R5")
-        self.vent = self.write_to_device(None, "V", "R6")
+                    self.actualvalue[key][1] = self.write_to_device3(key, self.actualvalue[key][0])
+        self.pressure = self.write_to_device3("P", "R5")
+        self.vent = self.write_to_device3("V", "R6")
         self.get_actualvalue_from_the_device_lock.release()  # release the lock
 
-    def decompose_m_string(self, stor):
+    def decompose_m_string(self, stor: str) -> None:
         if "0" == stor[2]:
             self.actualvalue["H"][1] = "0"
             self.actualvalue["C"][1] = "0"
@@ -234,7 +254,7 @@ class controller_class:
 
     def update_setpoint_och(self, var):
         for i in self.setpoint:
-            if None == self.setpoint[i][0]:
+            if self.setpoint[i][0] is None:
                 if i == var:
                     self.setpoint[i][1] = "1"
                 elif self.setpoint[i][1] == "1":
@@ -244,17 +264,17 @@ class controller_class:
         # will set the actualvalue to the device
         self.set_actualvalue_to_the_device_lock.acquire()  # lock to write data
         # write actualvalue to the device
-        for i in self.actualvalue:
-            if "M" != i:
-                if float(self.actualvalue[i][1]) != float(self.setpoint[i][1]):
-                    if self.actualvalue[i][0]:
-                        self.actualvalue[i][1] = self.write_to_device(self.setpoint[i][1], i, self.setpoint[i][0])
-                    elif "1" == self.setpoint[i][1]:
-                        self.write_to_device(None, i, None)
-                        stor = self.write_to_device(None, "M", self.actualvalue["M"][0])
+        for key in self.actualvalue.keys():
+            if "M" != key:
+                if float(self.actualvalue[key][1]) != float(self.setpoint[key][1]):
+                    if self.actualvalue[key][0]:
+                        self.actualvalue[key][1] = self.write_to_device4(self.setpoint[key][1], key, self.setpoint[key][0])
+                    elif "1" == self.setpoint[key][1]:
+                        self.write_to_device2(key)
+                        stor = self.write_to_device3("M", self.actualvalue["M"][0])
                         self.decompose_m_string(stor)
-        self.pressure = self.write_to_device(None, "P", "R5")
-        self.vent = self.write_to_device(None, "V", "R6")
+        self.pressure = self.write_to_device3("P", "R5")
+        self.vent = self.write_to_device3("V", "R6")
         if self.communication_problem == -1:
             self.communication_problem = 0
             self.log.warning("write everything to device")
@@ -263,65 +283,183 @@ class controller_class:
             self.set_actualvalue_to_the_device()
         self.set_actualvalue_to_the_device_lock.release()  # release the lock
 
-    def write_to_device(self, data, com, answ):
+    def write_to_device2(self, com: str) -> None:
         global controller
         if len(com) == 0:
-            return
-        if self.device == None or self.devicename == "":
-            self.log.warning("no device given; can't write to device!")
-            self.log.debug("out: %s" % com)
             return
         self.write_to_device_lock.acquire()
         if not self.deviceopen:
             self.device.open()
-            if self.device.isOpen():
+            if self.device.is_open:
                 self.device.close()
                 self.device.open()
             self.deviceopen = True
-            self.log.debug("device.isOpen() - %s" % self.device.isOpen())
+            self.log.debug("device.isOpen() - %s" % self.device.is_open)
+
+        self.wrd("%s\r\n" % com)
+        self.log.debug("SEND: %s\r\n" % com)
+        self.device.flush()
+        self.write_to_device_lock.release()
+
+    def rdd(self, len: int) -> str:
+        return self.device.read(len).decode("utf-8")
+
+    def write_to_device3(self, com: str, answ: str) -> str:
+        global controller
+        self.write_to_device_lock.acquire()
+        if not self.deviceopen:
+            self.device.open()
+            if self.device.is_open:
+                self.device.close()
+                self.device.open()
+            self.deviceopen = True
+            self.log.debug("device.isOpen() - %s" % self.device.is_open)
+
+        self.device.flush()
+        self.wrd("%s\r\n" % answ)
+        r = self.rdd(len(com))
+        if com != r:
+            self.log.warning("communication problem with device %s" % self.devicename)
+            self.communication_problem += 1
+            if self.communication_problem >= 3:
+                self.log.warning("%d communication problems; will restart the device" % self.communication_problem)
+                self.device.flush()
+                self.device.close()
+                self.device.open()
+                self.communication_problem = -1
+            raise RuntimeError("Communication problem")
+            r = None
+        else:  # if command is recognised read up to "\r" or "\n" + 1 bytes
+            dummy = self.rdd(1)
+            r = ""
+            while not (chr(13) == dummy or chr(10) == dummy):
+                r += dummy
+                dummy = self.rdd(1)
+                # print ord(dummy)
+            # dummy = self.rdd(1)
+            # print ord(dummy)
+            self.datalog.info("SENDRECEIVE: %s%s" % (com, r))
+            try:
+                fs = self.full_scale_values[int(self.actualvalue["E"][1])]
+                unit = self.unit_list[int(self.actualvalue["F"][1])][3:]
+                P = fs * float(self.pressure) / 100.0
+                self.datalog.info("pressure %8.4f %s" % (P, unit))
+            except Exception:
+                pass
+        self.write_to_device_lock.release()
+        return r
+
+    def write_to_device4(self, data: str, com: str, answ: str) -> str:
+        global controller
+        self.write_to_device_lock.acquire()
+        if not self.deviceopen:
+            self.device.open()
+            if self.device.is_open:
+                self.device.close()
+                self.device.open()
+            self.deviceopen = True
+            self.log.debug("device.isOpen() - %s" % self.device.is_open)
         if data:
             self.wrd("%s%s\r\n" % (com, data))
             self.log.debug("SEND: %s%s\r\n" % (com, data))
-        elif not (data or answ):
-            self.wrd("%s\r\n" % com)
-            self.log.debug("SEND: %s\r\n" % com)
         self.device.flush()
         # self.log.debug("RECEIVE: %s" % r)
-        if answ:
-            # time.sleep(0.025) #wait until the command is executed?
-            self.wrd("%s\r\n" % answ)
-            r = self.device.read(len(com))
-            if com != r:
-                self.log.warning("communication problem with device %s" % self.devicename)
-                self.communication_problem += 1
-                if self.communication_problem >= 3:
-                    self.log.warning("%d communication problems; will restart the device" % self.communication_problem)
-                    self.device.flushInput()
-                    self.device.flushOutput()
-                    self.device.close()
-                    self.device.open()
-                    self.communication_problem = -1
-                r = None
-            else:  # if command is recognised read up to "\r" or "\n" + 1 bytes
-                dummy = self.device.read(1)
-                r = ""
-                while not (chr(13) == dummy or chr(10) == dummy):
-                    r += dummy
-                    dummy = self.device.read(1)
-                    # print ord(dummy)
-                # dummy = self.device.read(1)
+        # time.sleep(0.025) #wait until the command is executed?
+        self.wrd("%s\r\n" % answ)
+        r = self.rdd(len(com))
+        if com != r:
+            self.log.warning("communication problem with device %s" % self.devicename)
+            self.communication_problem += 1
+            if self.communication_problem >= 3:
+                self.log.warning("%d communication problems; will restart the device" % self.communication_problem)
+                self.device.flush()
+                # self.device.flushInput()
+                # self.device.flushOutput()
+                self.device.close()
+                self.device.open()
+                self.communication_problem = -1
+            raise RuntimeError("Communication problem")
+            r = None
+        else:  # if command is recognised read up to "\r" or "\n" + 1 bytes
+            dummy = self.rdd(1)
+            r = ""
+            while not (chr(13) == dummy or chr(10) == dummy):
+                r += dummy
+                dummy = self.rdd(1)
                 # print ord(dummy)
-                self.datalog.info("SENDRECEIVE: %s%s" % (com, r))
-                try:
-                    fs = self.full_scale_values[int(self.actualvalue["E"][1])]
-                    unit = self.unit_list[int(self.actualvalue["F"][1])][3:]
-                    P = fs * float(self.pressure) / 100.0
-                    self.datalog.info("pressure %8.4f %s" % (P, unit))
-                except:
-                    pass
+            # dummy = self.rdd(1)
+            # print ord(dummy)
+            self.datalog.info("SENDRECEIVE: %s%s" % (com, r))
+            try:
+                fs = self.full_scale_values[int(self.actualvalue["E"][1])]
+                unit = self.unit_list[int(self.actualvalue["F"][1])][3:]
+                P = fs * float(self.pressure) / 100.0
+                self.datalog.info("pressure %8.4f %s" % (P, unit))
+            except Exception:
+                pass
         self.write_to_device_lock.release()
-        if answ:
-            return r
+        return r
+
+    # def write_to_device(self, data, com, answ):
+    #     global controller
+    #     if len(com) == 0:
+    #         return
+    #     if self.device is None or self.devicename == "":
+    #         self.log.warning("no device given; can't write to device!")
+    #         self.log.debug("out: %s" % com)
+    #         return
+    #     self.write_to_device_lock.acquire()
+    #     if not self.deviceopen:
+    #         self.device.open()
+    #         if self.device.is_open:
+    #             self.device.close()
+    #             self.device.open()
+    #         self.deviceopen = True
+    #         self.log.debug("device.isOpen() - %s" % self.device.is_open)
+    #     if data:
+    #         self.wrd("%s%s\r\n" % (com, data))
+    #         self.log.debug("SEND: %s%s\r\n" % (com, data))
+    #     elif not (data or answ):
+    #         self.wrd("%s\r\n" % com)
+    #         self.log.debug("SEND: %s\r\n" % com)
+    #     self.device.flush()
+    #     # self.log.debug("RECEIVE: %s" % r)
+    #     if answ:
+    #         # time.sleep(0.025) #wait until the command is executed?
+    #         self.wrd("%s\r\n" % answ)
+    #         r = self.rdd(len(com))
+    #         if com != r:
+    #             self.log.warning("communication problem with device %s" % self.devicename)
+    #             self.communication_problem += 1
+    #             if self.communication_problem >= 3:
+    #                 self.log.warning("%d communication problems; will restart the device" % self.communication_problem)
+    #                 self.device.flush()
+    #                 # self.device.flushInput()
+    #                 # self.device.flushOutput()
+    #                 self.device.close()
+    #                 self.device.open()
+    #                 self.communication_problem = -1
+    #             r = None
+    #         else:  # if command is recognised read up to "\r" or "\n" + 1 bytes
+    #             dummy = self.rdd(1)
+    #             r = ""
+    #             while not (chr(13) == dummy or chr(10) == dummy):
+    #                 r += dummy
+    #                 dummy = self.rdd(1)
+    #                 # print ord(dummy)
+    #             # dummy = self.rdd(1)
+    #             # print ord(dummy)
+    #             self.datalog.info("SENDRECEIVE: %s%s" % (com, r))
+    #             try:
+    #                 fs = self.full_scale_values[int(self.actualvalue["E"][1])]
+    #                 unit = self.unit_list[int(self.actualvalue["F"][1])][3:]
+    #                 P = fs * float(self.pressure) / 100.0
+    #                 self.datalog.info("pressure %8.4f %s" % (P, unit))
+    #             except:
+    #                 pass
+    #     self.write_to_device_lock.release()
+    #     if answ:
+    #         return r
 
     def open_vent(self):
         self.lock.acquire()
@@ -339,7 +477,7 @@ class controller_class:
         self.lock.release()
 
     def set_setpoint(self, s=None):
-        if s != None:
+        if s is not None:
             self.setpoint = s
 
     def get_actualvalue(self):
@@ -366,7 +504,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler, plc_tools.plc_s
                 d = self.request.recv(1024 * 1024)
                 if not d:
                     break
-            except:
+            except Exception:
                 pass
             # analyse data
             response = ""
@@ -386,10 +524,10 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler, plc_tools.plc_s
                     if r:
                         totalbytes = 3 + len(r[0]) + 1 + int(r[0])
                         while len(data) < totalbytes:
-                            data += self.socket.recv(1024 * 1024)
+                            data += self.request.recv(1024 * 1024)
                         length = int(r[0])
-                        data = data[4 + len(r[0]) :]
-                        v = pickle.loads(data[0:length])
+                        data = data[4 + len(r[0]):]
+                        v = pickle.loads((data[0:length]).encode("utf-8"))
                         data = data[length:]
                         controller.set_setpoint(s=v)
                 elif (len(data) >= 3) and (data[0:3].lower() == "get"):
@@ -459,7 +597,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler, plc_tools.plc_s
         controller.log.debug("stop connection to %s:%s" % (self.client_address[0], self.client_address[1]))
         try:
             self.request.shutdown(socket.SHUT_RDWR)
-        except:
+        except Exception:
             pass
 
 
@@ -473,6 +611,25 @@ def shutdown(signum, frame):
     controller.log.debug("number of threads: %d" % threading.activeCount())
     controller.log.info("will exit the program")
     controller.shutdown()
+
+
+def get_server(args: argparse.Namespace, log: logging.Logger, controller: controller_class) -> ThreadedTCPServer:
+    s = True
+    while s:
+        s = False
+        try:
+            server = ThreadedTCPServer((args.ip, args.port), ThreadedTCPRequestHandler)
+            return server
+        except socket.error:
+            if not args.choosenextport:
+                controller.running = False
+            if not args.choosenextport:
+                raise
+            s = True
+            log.error("port %d is in use" % args.port)
+            args.port += 1
+            log.info("try port %d" % args.port)
+    raise RuntimeError("Cannot get server")
 
 
 def main():
@@ -621,56 +778,55 @@ def main():
     log.info('logging to "%s"' % args.logfile)
     signal.signal(signal.SIGTERM, shutdown)
     # check runfile
-    if args.runfile != "":
-        ori = [os.getpid(), args.device]
-        runinfo = [ori]
-        # runinfo = os.getpid(),args.device
-        if os.path.isfile(args.runfile):
-            # file exists, read it
-            f = open(args.runfile, "r")
-            reader = csv.reader(f)
-            r = False  # assuming other pid is not running; will be corrected if more information is available
-            for row in reader:
-                # row[0] should be a pid
-                # row[1] should be the device
-                rr = False
-                if os.path.exists(os.path.join("/proc", "%d" % os.getpid())):  # checking /proc available
-                    if os.path.exists(os.path.join("/proc", "%d" % int(row[0]))):  # check if other pid is running
-                        ff = open(os.path.join("/proc", "%d" % int(row[0]), "cmdline"), "rt")
-                        cmdline = ff.read(1024 * 1024)
-                        ff.close()
-                        if re.findall(__file__, cmdline):
-                            rr = True
-                            log.debug("process %d is running (proc)" % int(row[0]))
-                else:  # /proc is not available; try kill, which only wirks on posix systems
-                    try:
-                        os.kill(int(row[0]), 0)
-                    except OSError as err:
-                        if err.errno == errno.ESRCH:
-                            # not running
-                            pass
-                        elif err.errno == errno.EPERM:
-                            # no permission to signal this process; assuming it is another kind of process
-                            pass
-                        else:
-                            # unknown error
-                            raise
-                    else:  # other pid is running
-                        rr = True  # assuming this is the same kind of process
-                        log.debug("process %d is running (kill)" % int(row[0]))
-                if rr and row[1] != args.device:  # checking iff same device
-                    runinfo += [[row[0], row[1]]]
-                elif rr:
-                    r = True
-            f.close()
-            if r:
-                log.debug("other process is running; exit.")
-                sys.exit(1)
-        f = open(args.runfile, "w")
-        writer = csv.writer(f)
-        for i in range(len(runinfo)):
-            writer.writerows([runinfo[i]])
+    ori = [os.getpid(), args.device]
+    runinfo = [ori]
+    # runinfo = os.getpid(),args.device
+    if os.path.isfile(args.runfile):
+        # file exists, read it
+        f = open(args.runfile, "r")
+        reader = csv.reader(f)
+        r = False  # assuming other pid is not running; will be corrected if more information is available
+        for row in reader:
+            # row[0] should be a pid
+            # row[1] should be the device
+            rr = False
+            if os.path.exists(os.path.join("/proc", "%d" % os.getpid())):  # checking /proc available
+                if os.path.exists(os.path.join("/proc", "%d" % int(row[0]))):  # check if other pid is running
+                    ff = open(os.path.join("/proc", "%d" % int(row[0]), "cmdline"), "rt")
+                    cmdline = ff.read(1024 * 1024)
+                    ff.close()
+                    if re.findall(__file__, cmdline):
+                        rr = True
+                        log.debug("process %d is running (proc)" % int(row[0]))
+            else:  # /proc is not available; try kill, which only wirks on posix systems
+                try:
+                    os.kill(int(row[0]), 0)
+                except OSError as err:
+                    if err.errno == errno.ESRCH:
+                        # not running
+                        pass
+                    elif err.errno == errno.EPERM:
+                        # no permission to signal this process; assuming it is another kind of process
+                        pass
+                    else:
+                        # unknown error
+                        raise
+                else:  # other pid is running
+                    rr = True  # assuming this is the same kind of process
+                    log.debug("process %d is running (kill)" % int(row[0]))
+            if rr and row[1] != args.device:  # checking iff same device
+                runinfo += [[row[0], row[1]]]
+            elif rr:
+                r = True
         f.close()
+        if r:
+            log.debug("other process is running; exit.")
+            sys.exit(1)
+    f = open(args.runfile, "w")
+    writer = csv.writer(f)
+    for i in range(len(runinfo)):
+        writer.writerows([runinfo[i]])
+    f.close()
     # go in background if useful
     if args.debug == 0:
         # go in background
@@ -700,20 +856,7 @@ def main():
     else:
         log.info("due to debug=1 will _not_ go to background (fork)")
     controller = controller_class(log=log, datalog=datalog, device=args.device, updatedelay=args.timedelay)
-    s = True
-    while s:
-        s = False
-        try:
-            server = ThreadedTCPServer((args.ip, args.port), ThreadedTCPRequestHandler)
-        except socket.error:
-            if not args.choosenextport:
-                controller.running = False
-            if not args.choosenextport:
-                raise
-            s = True
-            log.error("port %d is in use" % args.port)
-            args.port += 1
-            log.info("try port %d" % args.port)
+    server = get_server(args, log, controller)
     ip, port = server.server_address
     log.info("listen at %s:%d" % (ip, port))
     # start a thread with the server -- that thread will then start one
