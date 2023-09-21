@@ -16,7 +16,7 @@ import tkinter
 from typing import Callable, List, Dict, Any
 
 from . import read_config_file
-from plc_tools.conversion import b2onoff
+from ..plc_tools.conversion import b2onoff
 from .class_rf_generator import class_rf_generator
 
 log = logging.getLogger("plc.rf_gen")

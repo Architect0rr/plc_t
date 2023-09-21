@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2012 Daniel Mohr
-#
 # Copyright (C) 2023 Egor Perevoshchikov
 #
 # This file is part of PlasmaLabControl.
@@ -20,11 +18,4 @@
 # You should have received a copy of the GNU General Public License
 # along with PlasmaLabControl.  If not, see <http://www.gnu.org/licenses/>.
 
-"""
-Tools for plc
-"""
-
-from . import plclogclasses
-from . import plccameraguidefaultclass
-from . import conversion
-from . import plc_socket_communication
+from . import plc

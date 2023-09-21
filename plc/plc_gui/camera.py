@@ -13,13 +13,13 @@ import threading
 import time
 import tkinter
 
-import plc_tools.plccameraguidefaultclass
+from ..plc_tools import plccameraguidefaultclass
 
 log = logging.getLogger('plc.plc_gui.camera')
 log.setLevel(logging.DEBUG)
 log.addHandler(logging.NullHandler())
 
-class camera(plc_tools.plccameraguidefaultclass.camera):
+class camera(plccameraguidefaultclass.camera):
     """gui for camera control
 
     Author: Daniel Mohr
@@ -230,7 +230,7 @@ class camera(plc_tools.plccameraguidefaultclass.camera):
         self.gammavar.set(self.gamma)
         self.gammaentry = tkinter.Entry(self.scaleframe,textvariable=self.gammavar,width=5)
         self.gammaentry.pack(side=tkinter.LEFT)
-        #        
+        #
         self.scale = 1.0
         #self.scaleframe = Tkinter.Frame(self.frame3)
         #self.scaleframe.grid(column=0,row=1,columnspan=3)

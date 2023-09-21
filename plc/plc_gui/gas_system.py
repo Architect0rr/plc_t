@@ -11,7 +11,7 @@ import string
 import sys
 import tkinter
 
-from plc_tools.conversion import *
+from ..plc_tools.conversion import *
 
 class gas_system():
     """gui for gas system control
@@ -183,7 +183,7 @@ class gas_system():
     def update(self):
         """update every dynamic read values"""
         self.membran_pump_status_val.set(b2onoff(self.controller[self.config.values.get('gas system','membran_pump_status_controller')].actualvalue[self.config.values.get('gas system','membran_pump_status_port')][int(self.config.values.get('gas system','membran_pump_status_channel'))]))
-        
+
         self.turbo_pump_1_status_val.set(b2onoff(self.controller[self.config.values.get('gas system','turbo_pump_1_status_controller')].actualvalue[self.config.values.get('gas system','turbo_pump_1_status_port')][int(self.config.values.get('gas system','turbo_pump_1_status_channel'))]))
         self.turbo_pump_2_status_val.set(b2onoff(self.controller[self.config.values.get('gas system','turbo_pump_2_status_controller')].actualvalue[self.config.values.get('gas system','turbo_pump_2_status_port')][int(self.config.values.get('gas system','turbo_pump_2_status_channel'))]))
         # RPM
@@ -236,7 +236,7 @@ class gas_system():
         channel = int(self.config.values.get('gas system','mass_flow_controller_measure_rate_channel'))
         self.mass_flow_flow_rate_val.set("%.2f msccm" % volt2msccm(self.controller[ctr].actualvalue[port][channel]))
         #self.mass_flow_flow_rate_val.set("%d ADC" % self.controller[ctr].actualvalue[port][channel])
-  
+
     def check_buttons(self):
         if self.controller['dc'].isconnect:
             self.membran_pump_checkbutton.configure(state=tkinter.NORMAL)

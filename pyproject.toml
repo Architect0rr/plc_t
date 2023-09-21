@@ -3,13 +3,13 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "PLC"
+name = "PLCr"
 version = "1.0.1"
 authors = [
     { name = "Egor Perevoshchikov", email = "abkein@abkein.ru" },
     { name = "Daniel Mohr", email = "mohr@mpe.mpg.de, daniel.mohr@dlr.de" },
 ]
-description = "PlasmaLabControl is a software for controlling the experiment."
+description = "PlasmaLabControl is a software for controlling the experiment. This is a reborn in Python3."
 readme = "README.md"
 license = { text = "The GNU General Public License v3.0" }
 requires-python = ">=3.8"
@@ -86,7 +86,7 @@ dependencies = [
 [project.scripts]
 
 [project.gui-scripts]
-plc = "plc"
+plc = "plc.plc:main"
 
 [project.urls]
 "Homepage" = "https://github.com/Architect0rr/MDDPN"

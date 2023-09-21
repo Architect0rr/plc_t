@@ -9,7 +9,7 @@ import tkinter
 from . import read_config_file
 from typing import Callable, Dict, Any, List
 
-from plc_tools.conversion import b2onoff
+from ..plc_tools.conversion import b2onoff
 
 
 class diagnostic_particles:

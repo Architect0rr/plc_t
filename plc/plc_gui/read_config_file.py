@@ -5,7 +5,7 @@ Date: 2013-05-14
 """
 
 import configparser
-import os.path
+from pathlib import Path
 
 
 class read_config_file:
@@ -15,14 +15,14 @@ class read_config_file:
     Date: 2013-05-14
     """
 
-    def __init__(self, system_wide_ini_file: str = "/etc/plc.cfg", user_ini_file: str = "~/.plc.cfg") -> None:
+    def __init__(self, system_wide_ini_file: str, user_ini_file: str) -> None:
         self.values = configparser.ConfigParser()
         # set default sections and variables
         self.set_default(self.values, system_wide_ini_file=system_wide_ini_file, user_ini_file=user_ini_file)
 
         # read ini-files
-        self.values.read(os.path.expanduser(self.values.get("ini", "system_wide_ini_file")))
-        self.values.read(os.path.expanduser(self.values.get("ini", "user_ini_file")))
+        self.values.read(Path(self.values.get("ini", "system_wide_ini_file")))
+        self.values.read(Path(self.values.get("ini", "user_ini_file")))
         # check camera sections
         self.number_of_cameras = self.values.getint("cameras", "n")
         n = 0
@@ -46,7 +46,7 @@ class read_config_file:
                 break
         self.number_of_acceleration_sensor = n
 
-    def set_default(self, c: configparser.ConfigParser, system_wide_ini_file: str = "/etc/plc.cfg", user_ini_file: str = "~/.plc.cfg") -> None:
+    def set_default(self, c: configparser.ConfigParser, system_wide_ini_file: str = "/etc/plc.cfg", user_ini_file = "~/.plc.cfg") -> None:
         # ini
         c.add_section("ini")
         c.set("ini", "system_wide_ini_file", system_wide_ini_file)
@@ -427,5 +427,5 @@ class read_config_file:
     def write_default_config_file(self, file: str) -> None:
         c = configparser.SafeConfigParser()
         self.set_default(c)
-        with open(os.path.expanduser(file), "w") as configfile:
+        with Path(file).open("w") as configfile:
             c.write(configfile)

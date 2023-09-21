@@ -13,9 +13,9 @@ import threading
 import time
 import tkinter
 
-import plc_tools.plc_socket_communication
+from . import plc_socket_communication
 
-class camera(plc_tools.plc_socket_communication.tools_for_socket_communication):
+class camera(plc_socket_communication.tools_for_socket_communication):
     """default functions of a class for a gui for a camera
 
     Author: Daniel Mohr
@@ -149,7 +149,7 @@ class camera(plc_tools.plc_socket_communication.tools_for_socket_communication):
 
     def update_img(self):
         """periodical update of the camera images in the gui
-        
+
         Author: Daniel Mohr
         Date: 2013-02-26, 2017-05-30
         """
@@ -741,7 +741,7 @@ class camera(plc_tools.plc_socket_communication.tools_for_socket_communication):
 
     def get_single_frame(self):
         """get a single frame with socket communication from camera server
-        
+
         Author: Daniel Mohr
         Date: 2013-02-27
         """

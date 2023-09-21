@@ -1,24 +1,42 @@
-"""class for digital controller (red box)
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+#
+# Copyright (C) 2013 Daniel Mohr
+#
+# Copyright (C) 2023 Egor Perevoshchikov
+#
+# This file is part of PlasmaLabControl.
+#
+# PlasmaLabControl is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# PlasmaLabControl is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with PlasmaLabControl.  If not, see <http://www.gnu.org/licenses/>.
 
-Author: Daniel Mohr
-Date: 2013-05-13
+"""
+class for digital controller (red box)
 """
 
 import logging
 
 from . import plcclientserverclass
 
-# [ ] Not used
-
 
 class digital_controller(plcclientserverclass.socket_communication_class):
-    """class for digital controller (red box)
-
-    Author: Daniel Mohr
-    Date: 2013-05-13
+    """
+    class for digital controller (red box)
     """
 
-    def myinit(self):
+    def __init__(self, config, confsect=None, pw=None, bufsize=4096):
+        super().__init__(config, confsect, pw, bufsize)
+
         self.myservername = "digital_controller_server"
         self.log = logging.getLogger("plc.plc_gui.digital_controller")
         self.cmd = self.config.values.get("dc", "server_command")

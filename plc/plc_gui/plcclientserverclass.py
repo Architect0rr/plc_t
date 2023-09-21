@@ -10,10 +10,10 @@ import threading
 import time
 import tkinter
 
-import plc_tools.plc_socket_communication
+from ..plc_tools import plc_socket_communication
 
 
-class socket_communication_class(plc_tools.plc_socket_communication.tools_for_socket_communication):
+class socket_communication_class(plc_socket_communication.tools_for_socket_communication):
     """base class for continued socket communication
 
     Author: Daniel Mohr
@@ -34,6 +34,7 @@ class socket_communication_class(plc_tools.plc_socket_communication.tools_for_so
         self.get_actualvalues_lock = threading.Lock()
         self.send_data_to_socket_lock = threading.Lock()
         self.updatethread_lock = threading.Lock()
+
         self.lock.acquire()  # lock
         self.config = config
         self.confsect = confsect
@@ -47,12 +48,11 @@ class socket_communication_class(plc_tools.plc_socket_communication.tools_for_so
         self.start_button = None
         self.stop_button = None
         self.updatethreadsleeptime = 0.001
-        self.myinit()
         self.lock.release()  # release the lock
 
-    def myinit(self):
-        """for outside use"""
-        pass
+    # def myinit(self):
+    #     """for outside use"""
+    #     pass
 
     def updatethread(self):
         """if necessary write values self.setpoint to device
@@ -80,11 +80,11 @@ class socket_communication_class(plc_tools.plc_socket_communication.tools_for_so
 
     def get_actualvalues(self):
         self.get_actualvalues_lock.acquire()  # lock
-        if self.socket != None:
+        if self.socket is not None:
             try:
                 self.send_data_to_socket(self.socket, "getact")
                 self.actualvalue = self.receive_data_from_socket(self.socket, self.bufsize)
-            except:
+            except Exception:
                 self.log.error("could not get actualvalues from server!")
         self.get_actualvalues_lock.release()  # release the lock
 

@@ -11,7 +11,7 @@ import string
 import sys
 import tkinter
 
-from plc_tools.conversion import *
+from ..plc_tools.conversion import *
 
 class translation_stage():
     """gui for Translation Stage

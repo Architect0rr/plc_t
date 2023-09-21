@@ -14,3 +14,4 @@ tests
 **/__pycache__/
 calc_lines.sh
 deprecated
+rplc.py

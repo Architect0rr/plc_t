@@ -32,8 +32,8 @@ License: GNU GENERAL PUBLIC LICENSE, Version 3, 29 June 2007.
 Full license notice: LICENSE
 """
 
-__plc_date__ = "2013-01-26"
-__plc_version__ = __plc_date__
+__plc_date__ = "2023-09-21"
+__plc_version__ = "1.0.1"
 
 import argparse
 import logging
@@ -41,11 +41,11 @@ import logging
 import os
 import sys
 import time
+from pathlib import Path
 from typing import Literal
 
-import plc_gui
-import plc_gui.read_config_file
-import plc_tools.plclogclasses
+from . import plc_gui
+from . import plc_tools
 
 
 def main() -> Literal[0]:
@@ -59,7 +59,6 @@ def main() -> Literal[0]:
     )
     parser.add_argument(
         "--system_config",
-        nargs=1,
         default="/etc/plc.cfg",
         type=str,
         required=False,
@@ -69,7 +68,6 @@ def main() -> Literal[0]:
     )
     parser.add_argument(
         "--config",
-        nargs=1,
         default="~/.plc.cfg",
         type=str,
         required=False,
@@ -78,15 +76,9 @@ def main() -> Literal[0]:
         metavar="file",
     )
     args = parser.parse_args()
-    configname: str = ""
-    if not isinstance(args.debug, int):
-        args.debug = args.debug[0]
-    if type(args.system_config) == list:
-        args.system_config = args.system_config[0]
-        configname = "%s%s" % (configname, args.system_config)
-    if type(args.config) == list:
-        args.config = args.config[0]
-        configname = "%s%s" % (configname, args.config)
+
+    system_conffile: Path = Path(args.system_config).resolve()
+    conffile: Path = Path(args.config).resolve()
     configs = plc_gui.read_config_file.read_config_file(system_wide_ini_file=args.system_config, user_ini_file=args.config)
     # logging
     log = logging.getLogger("plc")
@@ -110,7 +102,7 @@ def main() -> Literal[0]:
     log.info("running with pid %d" % os.getpid())
     # start gui
     log.debug("Starting GUI")
-    plc_gui.PLC.main(args, log.getChild("gui"), configname)
+    plc_gui.plc.PLC.main(log.getChild("gui"), system_conffile, conffile)
     # after gui
     log.debug("Flushing log handlers")
     fh.flush()
