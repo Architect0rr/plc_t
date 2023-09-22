@@ -54,6 +54,7 @@ from . import acceleration_sensor
 from . import diagnostic_particles
 
 from .misc import except_notify
+from .plcclientserverclass import scs_gui
 
 from ..plc_tools import plclogclasses
 
@@ -291,17 +292,19 @@ class PLC(tkinter.Frame):
 
         self.digital_controller_window = tkinter.LabelFrame(self.controller_window, text="digital", labelanchor="n")
         self.digital_controller_window.grid(column=0, row=0)
-        self.digital_controller = controller.digital_controller(config=self.configs, pw=self.digital_controller_window)
+        self.digital_controller = controller.digital_controller(self.log.getChild("dc"), self.configs)
         self.controller["dc"] = self.digital_controller
-        self.controller["dc"].gui()
+        # self.controller["dc"].gui()
         self.controller["dc"].set_default_values()
+        scs_gui(self.digital_controller_window, self.digital_controller)
 
         self.multi_purpose_controller_window = tkinter.LabelFrame(self.controller_window, text="multi purpose", labelanchor="n")
         self.multi_purpose_controller_window.grid(column=1, row=0)
-        self.multi_purpose_controller = controller.multi_purpose_controller(config=self.configs, pw=self.multi_purpose_controller_window)
+        self.multi_purpose_controller = controller.multi_purpose_controller(self.log.getChild("mpc"), self.configs)
         self.controller["mpc"] = self.multi_purpose_controller
-        self.controller["mpc"].gui()
+        # self.controller["mpc"].gui()
         self.controller["mpc"].set_default_values()
+        scs_gui(self.multi_purpose_controller_window, self.multi_purpose_controller)
 
         # electrode motion controller
         self.electrode_motion_controller_device = self.configs.values.get("electrode motion controller", "devicename")

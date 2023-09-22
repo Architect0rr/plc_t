@@ -1,6 +1,6 @@
 # PLC - PlasmaLabControl (Python3)
 
-PLC is a software package to control the experiment setup of Plasmalb.
+PLC is a software package to control the experiment setup of Plasmalab.
 
 This is a reborn in Python3.
 

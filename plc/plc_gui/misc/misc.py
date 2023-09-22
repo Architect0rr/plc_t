@@ -19,6 +19,8 @@
 
 
 from multiprocessing import Process
+from threading import Thread
 from typing import List
 
 proccesses_to_join: List[Process] = []
+threads_to_join: List[Thread] = []

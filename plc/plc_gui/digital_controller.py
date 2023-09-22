@@ -25,7 +25,9 @@ class for digital controller (red box)
 """
 
 import logging
+from typing import List, Dict, Any
 
+from .read_config_file import read_config_file
 from . import plcclientserverclass
 
 
@@ -34,43 +36,28 @@ class digital_controller(plcclientserverclass.socket_communication_class):
     class for digital controller (red box)
     """
 
-    def __init__(self, config, confsect=None, pw=None, bufsize=4096):
-        super().__init__(config, confsect, pw, bufsize)
+    def __init__(self, log: logging.Logger, config: read_config_file, bufsize: int = 4096):
+        super().__init__(log, config, "dc", bufsize)
 
         self.myservername = "digital_controller_server"
-        self.log = logging.getLogger("plc.plc_gui.digital_controller")
-        self.cmd = self.config.values.get("dc", "server_command")
-        self.start_server = self.config.values.getboolean("dc", "start_server")
-        self.logfile = self.config.values.get("dc", "server_logfile")
-        self.datalogfile = self.config.values.get("dc", "server_datalogfile")
-        self.dev = self.config.values.get("dc", "server_device")
-        self.rf = self.config.values.get("dc", "server_runfile")
-        self.ip = self.config.values.get("dc", "server_ip")
-        self.sport = self.config.values.getint("dc", "server_port")
-        self.server_max_start_time = self.config.values.getfloat("dc", "server_max_start_time")
-        self.st = self.config.values.get("dc", "server_timedelay")
-        self.update_intervall = self.config.values.getint("dc", "update_intervall") / 1000.0
-        self.trigger_out = self.config.values.getboolean("dc", "trigger_out")
-        self.padx = self.config.values.get("gui", "padx")
-        self.pady = self.config.values.get("gui", "pady")
         # setpoint/actualvalue:
-        self.setpoint = {
+        self.setpoint: Dict[str, Any] = {
             "A": 8 * [None],
             "B": 8 * [None],
             "dispenser": {"n": None, "ton": None, "shake": False, "port": None, "channel": None, "toff": None},
             "C": 8 * [None],
             "D": 8 * [None],
         }  # dict of requested values, which will be updated to device
-        self.actualvalue = {
+        self.actualvalue: Dict[str, Any] = {
             "A": 8 * [None],
             "B": 8 * [None],
             "dispenser": {"n": None, "ton": None, "shake": False, "port": None, "channel": None, "toff": None},
             "C": 8 * [None],
             "D": 8 * [None],
         }  # dict of values on device
-        self.ports = ["A", "B", "C", "D"]
+        self.ports: List[str] = ["A", "B", "C", "D"]
 
-    def set_default_values(self):
+    def set_default_values(self) -> None:
         """set default values
 
         set setpoint[...] to 0 or False
@@ -84,7 +71,7 @@ class digital_controller(plcclientserverclass.socket_communication_class):
         for port in self.ports:
             for channel in range(8):
                 self.setpoint[port][channel] = None
-        if self.isconnect:
+        if self.connected:
             self.socketlock.acquire()  # lock
             self.get_actualvalues()
             self.socketlock.release()  # release the lock
@@ -94,10 +81,10 @@ class digital_controller(plcclientserverclass.socket_communication_class):
                     self.actualvalue[port][channel] = False
         self.lock.release()  # release the lock
 
-    def myextra_socket_communication_with_server(self):
+    def myextra_socket_communication_with_server(self) -> None:
         self.setpoint["dispenser"]["shake"] = False
 
-    def actualvalue2setpoint(self):
+    def actualvalue2setpoint(self) -> None:
         for port in self.ports:
             for channel in range(8):
                 self.setpoint[port][channel] = self.actualvalue[port][channel]
