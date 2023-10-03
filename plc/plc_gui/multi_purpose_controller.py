@@ -88,7 +88,7 @@ class multi_purpose_controller(plcclientserverclass.socket_communication_class):
             self.get_actualvalues()
             self.socketlock.release()  # release the lock
         else:
-            self.actualvalue[port][channel] = False
+            # self.actualvalue[port][channel] = False
             port = "DO"
             for channel in range(4):
                 self.actualvalue[port][channel] = False

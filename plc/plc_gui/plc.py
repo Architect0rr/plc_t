@@ -88,7 +88,9 @@ class PLC(tkinter.Frame):
         self.log = _log
         self.log.debug("Initializing GUI")
         self.conffile = conffile
-        self.configs = read_config_file.read_config_file(system_wide_ini_file=system_conffile.as_posix(), user_ini_file=conffile.as_posix())
+        self.configs = read_config_file.read_config_file(
+            system_wide_ini_file=system_conffile.as_posix(), user_ini_file=conffile.as_posix()
+        )
         # Set up logging
         self.lh = plclogclasses.LabelLogHandler(n=self.configs.values.getint("gui", "debug_area_height"))
         self.lh.setLevel(logging.DEBUG)
@@ -128,8 +130,14 @@ class PLC(tkinter.Frame):
         self.programmenu = tkinter.Menu(self.menu)
         self.menu.add_cascade(label="Programs", menu=self.programmenu)
         self.programmenu.add_command(label="camera_client.py", command=self.start_extern_program_camera_client)
-        self.programmenu.add_command(label="digital_controller_client.py", command=self.start_extern_program_digital_controller_client)
-        self.programmenu.add_command(label="multi_purpose_controller_client.py", command=self.start_extern_program_multi_purpose_controller_client)
+        self.programmenu.add_command(
+            label="digital_controller_client.py",
+            command=self.start_extern_program_digital_controller_client,
+        )
+        self.programmenu.add_command(
+            label="multi_purpose_controller_client.py",
+            command=self.start_extern_program_multi_purpose_controller_client,
+        )
         self.programmenu.add_command(label="debug_controller.py", command=self.start_extern_program_debug_controller)
         self.programmenu.add_separator()
         self.programmenu.add_command(label="plc_viewer.py", command=self.start_extern_program_plc_viewer)
@@ -139,7 +147,11 @@ class PLC(tkinter.Frame):
         self.debugmenu = tkinter.Menu(self.menu)
         self.menu.add_cascade(label="Debug", menu=self.debugmenu)
         self.debugmenu_status = tkinter.IntVar()
-        self.debugmenu.add_checkbutton(label="debug infos on/off", command=self.switch_debug_infos_on_off, variable=self.debugmenu_status)
+        self.debugmenu.add_checkbutton(
+            label="debug infos on/off",
+            command=self.switch_debug_infos_on_off,
+            variable=self.debugmenu_status,
+        )
         self.debugmenu_status.set(1 if self.debug == 1 else 0)
 
         # help menu
@@ -155,7 +167,9 @@ class PLC(tkinter.Frame):
         self.info_area = tkinter.Frame(self.toolbar)
         self.info_area.pack(expand=True, fill=tkinter.X)
         self.info_area_load_val = tkinter.StringVar()
-        self.info_area_load = tkinter.Label(self.info_area, textvariable=self.info_area_load_val, height=1, width=21, anchor="sw")
+        self.info_area_load = tkinter.Label(
+            self.info_area, textvariable=self.info_area_load_val, height=1, width=21, anchor="sw"
+        )
         self.info_area_load_val.set("")
         self.info_area_load.pack(side=tkinter.RIGHT)
         # create acceleration sensor
@@ -163,7 +177,15 @@ class PLC(tkinter.Frame):
         self.info_area_acceleration_sensors = []
         for i in range(self.configs.number_of_acceleration_sensor):
             self.info_area_acceleration_sensor_vals += [tkinter.StringVar()]
-            self.info_area_acceleration_sensors += [tkinter.Label(self.info_area, textvariable=self.info_area_acceleration_sensor_vals[i], height=1, width=21, anchor="sw")]
+            self.info_area_acceleration_sensors += [
+                tkinter.Label(
+                    self.info_area,
+                    textvariable=self.info_area_acceleration_sensor_vals[i],
+                    height=1,
+                    width=21,
+                    anchor="sw",
+                )
+            ]
             self.info_area_acceleration_sensor_vals[i].set("acc%d=(?.??,?.??,?.??)" % (i + 1))
             self.info_area_acceleration_sensors[i].pack(side=tkinter.RIGHT)
 
@@ -222,19 +244,61 @@ class PLC(tkinter.Frame):
         self.cameras_window_control.pack()
 
         # cameras, record
-        self.cameras_connect_button = tkinter.Button(self.cameras_window_control, text="connect", command=self.connect_cameras, padx=self.padx, pady=self.pady)
+        self.cameras_connect_button = tkinter.Button(
+            self.cameras_window_control,
+            text="connect",
+            command=self.connect_cameras,
+            padx=self.padx,
+            pady=self.pady,
+        )
         self.cameras_connect_button.grid(column=0, row=0)
-        self.cameras_disconnect_button = tkinter.Button(self.cameras_window_control, text="disconnect", command=self.disconnect_cameras, padx=self.padx, pady=self.pady)
+        self.cameras_disconnect_button = tkinter.Button(
+            self.cameras_window_control,
+            text="disconnect",
+            command=self.disconnect_cameras,
+            padx=self.padx,
+            pady=self.pady,
+        )
         self.cameras_disconnect_button.grid(column=0, row=1)
-        self.cameras_quit_button = tkinter.Button(self.cameras_window_control, text="quit cams", command=self.quit_cameras, padx=self.padx, pady=self.pady)
+        self.cameras_quit_button = tkinter.Button(
+            self.cameras_window_control,
+            text="quit cams",
+            command=self.quit_cameras,
+            padx=self.padx,
+            pady=self.pady,
+        )
         self.cameras_quit_button.grid(column=0, row=2)
-        self.cameras_start_live_view_button = tkinter.Button(self.cameras_window_control, text="start view", command=self.start_live_view_cameras, padx=self.padx, pady=self.pady)
+        self.cameras_start_live_view_button = tkinter.Button(
+            self.cameras_window_control,
+            text="start view",
+            command=self.start_live_view_cameras,
+            padx=self.padx,
+            pady=self.pady,
+        )
         self.cameras_start_live_view_button.grid(column=0, row=3)
-        self.cameras_stop_live_view_button = tkinter.Button(self.cameras_window_control, text="stop view", command=self.stop_live_view_cameras, padx=self.padx, pady=self.pady)
+        self.cameras_stop_live_view_button = tkinter.Button(
+            self.cameras_window_control,
+            text="stop view",
+            command=self.stop_live_view_cameras,
+            padx=self.padx,
+            pady=self.pady,
+        )
         self.cameras_stop_live_view_button.grid(column=0, row=4)
-        self.cameras_start_record_button = tkinter.Button(self.cameras_window_control, text="start record", command=self.start_record_cameras, padx=self.padx, pady=self.pady)
+        self.cameras_start_record_button = tkinter.Button(
+            self.cameras_window_control,
+            text="start record",
+            command=self.start_record_cameras,
+            padx=self.padx,
+            pady=self.pady,
+        )
         self.cameras_start_record_button.grid(column=0, row=5)
-        self.cameras_stop_record_button = tkinter.Button(self.cameras_window_control, text="stop record", command=self.stop_record_cameras, padx=self.padx, pady=self.pady)
+        self.cameras_stop_record_button = tkinter.Button(
+            self.cameras_window_control,
+            text="stop record",
+            command=self.stop_record_cameras,
+            padx=self.padx,
+            pady=self.pady,
+        )
         self.cameras_stop_record_button.grid(column=0, row=6)
         # camera pictures
         self.cameras_window_view = tkinter.Frame(self.cameras_window)
@@ -267,10 +331,17 @@ class PLC(tkinter.Frame):
         self.acceleration_sensor = []
         for i in range(self.configs.number_of_acceleration_sensor):
             self.acceleration_sensor += [
-                acceleration_sensor.acceleration_sensor(config=self.configs, confsect="acceleration_sensor%d" % (i + 1), pw=self.acceleration_sensor_tabs[i])
+                acceleration_sensor.acceleration_sensor(
+                    config=self.configs,
+                    confsect="acceleration_sensor%d" % (i + 1),
+                    pw=self.acceleration_sensor_tabs[i],
+                )
             ]
             self.acceleration_sensor[i].extern_update_start(
-                extern_stringvar=self.info_area_acceleration_sensor_vals[i], notebook=self.tabs, notebookindex=self.acceleration_sensor_notebook_index[i], notebookextern=0
+                extern_stringvar=self.info_area_acceleration_sensor_vals[i],
+                notebook=self.tabs,
+                notebookindex=self.acceleration_sensor_notebook_index[i],
+                notebookextern=0,
             )
 
         # ########################
@@ -298,7 +369,9 @@ class PLC(tkinter.Frame):
         self.controller["dc"].set_default_values()
         scs_gui(self.digital_controller_window, self.digital_controller)
 
-        self.multi_purpose_controller_window = tkinter.LabelFrame(self.controller_window, text="multi purpose", labelanchor="n")
+        self.multi_purpose_controller_window = tkinter.LabelFrame(
+            self.controller_window, text="multi purpose", labelanchor="n"
+        )
         self.multi_purpose_controller_window.grid(column=1, row=0)
         self.multi_purpose_controller = controller.multi_purpose_controller(self.log.getChild("mpc"), self.configs)
         self.controller["mpc"] = self.multi_purpose_controller
@@ -309,9 +382,15 @@ class PLC(tkinter.Frame):
         # electrode motion controller
         self.electrode_motion_controller_device = self.configs.values.get("electrode motion controller", "devicename")
         if self.electrode_motion_controller_device != "-1":
-            self.electrode_motion_controller_window = tkinter.LabelFrame(self.controller_window, text="electrode motion", labelanchor="n")
+            self.electrode_motion_controller_window = tkinter.LabelFrame(
+                self.controller_window, text="electrode motion", labelanchor="n"
+            )
             self.electrode_motion_controller_window.grid(column=2, row=0)
-            self.electrode_motion_controller = controller.electrode_motion_controller(config=self.configs, pw=self.electrode_motion_controller_window, debugprint=self.debugprint)
+            self.electrode_motion_controller = controller.electrode_motion_controller(
+                config=self.configs,
+                pw=self.electrode_motion_controller_window,
+                debugprint=self.debugprint,
+            )
             self.controller["emc"] = self.electrode_motion_controller
             self.controller["emc"].gui()
             self.controller["emc"].set_default_values()
@@ -319,49 +398,79 @@ class PLC(tkinter.Frame):
         # translation stage controller
         self.translation_stage_device = self.configs.values.get("translation stage controller", "devicename")
         if self.translation_stage_device != "-1":
-            self.translation_stage_controller_window = tkinter.LabelFrame(self.controller_window, text="translation stage", labelanchor="n")
+            self.translation_stage_controller_window = tkinter.LabelFrame(
+                self.controller_window, text="translation stage", labelanchor="n"
+            )
             self.translation_stage_controller_window.grid(column=3, row=0)
             self.translation_stage_controller = controller.translation_stage_controller(
-                config=self.configs, pw=self.translation_stage_controller_window, debugprint=self.debugprint
+                config=self.configs,
+                pw=self.translation_stage_controller_window,
+                debugprint=self.debugprint,
             )
             self.controller["tsc"] = self.translation_stage_controller
             self.controller["tsc"].gui()
             self.controller["tsc"].set_default_values()
 
         # rf_generator controller
-        self.rf_generator_controller_window = tkinter.LabelFrame(self.controller_window, text="rf_generator", labelanchor="n")
+        self.rf_generator_controller_window = tkinter.LabelFrame(
+            self.controller_window, text="rf_generator", labelanchor="n"
+        )
         self.rf_generator_controller_window.grid(column=4, row=0)
-        self.rf_generator_controller = controller.rf_generator_controller(config=self.configs, pw=self.rf_generator_controller_window, debugprint=self.debugprint)
+        self.rf_generator_controller = controller.rf_generator_controller(
+            config=self.configs, _log=self.log.getChild("rfgc")
+        )
         self.controller["rfgc"] = self.rf_generator_controller
-        self.controller["rfgc"].gui()
-        self.controller["rfgc"].set_default_values()
+        # self.controller["rfgc"].gui()
+        # self.controller["rfgc"].set_default_values()
+        # controller.rfgc_gui(self.rf_generator_controller_window, self.rf_generator_controller)
 
         # create block for gas system
         self.gas_system_window = tkinter.LabelFrame(self.control_window1, text="Gas System")
         # self.gas_system_window.pack()
         self.gas_system_window.grid(column=1, row=0)
-        self.gas_system = gas_system.gas_system(config=self.configs, pw=self.gas_system_window, debugprint=self.debugprint, controller=self.controller)
+        self.gas_system = gas_system.gas_system(
+            config=self.configs,
+            pw=self.gas_system_window,
+            debugprint=self.debugprint,
+            controller=self.controller,
+        )
         # create block for RF-generator
         self.rf_generator_window = tkinter.Frame(self.control_window, relief="solid")
         self.rf_generator_window.pack()
-        self.rf_generator = rf_generator.rf_generator_gui(config=self.configs, pw=self.rf_generator_window, debugprint=self.debugprint, controller=self.controller)
+        self.rf_generator = rf_generator.rf_generator_gui(
+            config=self.configs,
+            pw=self.rf_generator_window,
+            controller=self.controller,
+            _log=self.log.getChild("rfgg"),
+        )
         # create block for diagnostic/particles
         self.diagnostic_particles_window = tkinter.LabelFrame(self.control_window, text="Diagnostics/Particles")
         self.diagnostic_particles_window.pack()
         self.diagnostic_particles = diagnostic_particles.diagnostic_particles(
-            config=self.configs, pw=self.diagnostic_particles_window, debugprint=self.debugprint, controller=self.controller
+            config=self.configs,
+            pw=self.diagnostic_particles_window,
+            debugprint=self.debugprint,
+            controller=self.controller,
         )
         # create block for electrode motion
         if self.electrode_motion_controller_device != "-1":
             self.electrode_motion_window = tkinter.LabelFrame(self.control_window, text="Electrode Motion")
             self.electrode_motion_window.pack()
-            self.electrode_motion = electrode_motion.electrode_motion(config=self.configs, pw=self.electrode_motion_window, debugprint=self.debugprint, controller=self.controller)
+            self.electrode_motion = electrode_motion.electrode_motion(
+                config=self.configs,
+                pw=self.electrode_motion_window,
+                debugprint=self.debugprint,
+                controller=self.controller,
+            )
         # create block for translation stage
         if self.translation_stage_device != "-1":
             self.translation_stage_window = tkinter.LabelFrame(self.control_window, text="Translation Stage")
             self.translation_stage_window.pack()
             self.translation_stage = translation_stage.translation_stage(
-                config=self.configs, pw=self.translation_stage_window, debugprint=self.debugprint, controller=self.controller
+                config=self.configs,
+                pw=self.translation_stage_window,
+                debugprint=self.debugprint,
+                controller=self.controller,
             )
 
         # create debug area
@@ -376,16 +485,37 @@ class PLC(tkinter.Frame):
         self.info_area_setpoints["frame"].pack(side=tkinter.LEFT)
         pw = self.info_area_setpoints["frame"]
         self.info_area_setpoints["previous setpoint"] = tkinter.Button(
-            pw, text="previous", command=self.choose_previous_setpoint, padx=self.padx, pady=self.pady, state=tkinter.DISABLED
+            pw,
+            text="previous",
+            command=self.choose_previous_setpoint,
+            padx=self.padx,
+            pady=self.pady,
+            state=tkinter.DISABLED,
         )
         self.info_area_setpoints["previous setpoint"].grid(column=0, row=0)
         self.info_area_setpoints["setpoint val"] = tkinter.StringVar()
-        self.info_area_setpoints["setpoint"] = tkinter.Label(pw, textvariable=self.info_area_setpoints["setpoint val"], height=1, width=80)
+        self.info_area_setpoints["setpoint"] = tkinter.Label(
+            pw, textvariable=self.info_area_setpoints["setpoint val"], height=1, width=80
+        )
         self.info_area_setpoints["setpoint"].grid(column=1, row=0)
         self.info_area_setpoints["setpoint val"].set("- none available -")
-        self.info_area_setpoints["next setpoint"] = tkinter.Button(pw, text="next", command=self.choose_next_setpoint, padx=self.padx, pady=self.pady, state=tkinter.DISABLED)
+        self.info_area_setpoints["next setpoint"] = tkinter.Button(
+            pw,
+            text="next",
+            command=self.choose_next_setpoint,
+            padx=self.padx,
+            pady=self.pady,
+            state=tkinter.DISABLED,
+        )
         self.info_area_setpoints["next setpoint"].grid(column=2, row=0)
-        self.info_area_setpoints["set setpoint"] = tkinter.Button(pw, text="set", command=self.set_setpoints, padx=self.padx, pady=self.pady, state=tkinter.DISABLED)
+        self.info_area_setpoints["set setpoint"] = tkinter.Button(
+            pw,
+            text="set",
+            command=self.set_setpoints,
+            padx=self.padx,
+            pady=self.pady,
+            state=tkinter.DISABLED,
+        )
         self.info_area_setpoints["set setpoint"].grid(column=3, row=0)
 
         self.default_setpoints_file = self.configs.values.get("ini", "default_setpoints_file")
@@ -399,17 +529,35 @@ class PLC(tkinter.Frame):
         self.main_window.bind(self.configs.values.get("cameras", "key_binding_view_all"), self.grabber_view)
         self.main_window.bind(self.configs.values.get("cameras", "key_binding_record_all"), self.grabber_record)
         if self.configs.values.get("dispensers", "key_binding_dispenser1") != "-1":
-            self.main_window.bind(self.configs.values.get("dispensers", "key_binding_dispenser1"), self.shake_dispenser1)
+            self.main_window.bind(
+                self.configs.values.get("dispensers", "key_binding_dispenser1"),
+                self.shake_dispenser1,
+            )
         if self.configs.values.get("dispensers", "key_binding_dispenser2") != "-1":
-            self.main_window.bind(self.configs.values.get("dispensers", "key_binding_dispenser2"), self.shake_dispenser2)
+            self.main_window.bind(
+                self.configs.values.get("dispensers", "key_binding_dispenser2"),
+                self.shake_dispenser2,
+            )
         if self.configs.values.get("dispensers", "key_binding_dispenser3") != "-1":
-            self.main_window.bind(self.configs.values.get("dispensers", "key_binding_dispenser3"), self.shake_dispenser3)
+            self.main_window.bind(
+                self.configs.values.get("dispensers", "key_binding_dispenser3"),
+                self.shake_dispenser3,
+            )
         if self.configs.values.get("dispensers", "key_binding_dispenser4") != "-1":
-            self.main_window.bind(self.configs.values.get("dispensers", "key_binding_dispenser4"), self.shake_dispenser4)
+            self.main_window.bind(
+                self.configs.values.get("dispensers", "key_binding_dispenser4"),
+                self.shake_dispenser4,
+            )
         if self.configs.values.get("ini", "key_binding_setpoints_previous") != "-1":
-            self.main_window.bind(self.configs.values.get("ini", "key_binding_setpoints_previous"), self.choose_previous_setpoint)
+            self.main_window.bind(
+                self.configs.values.get("ini", "key_binding_setpoints_previous"),
+                self.choose_previous_setpoint,
+            )
         if self.configs.values.get("ini", "key_binding_setpoints_next") != "-1":
-            self.main_window.bind(self.configs.values.get("ini", "key_binding_setpoints_next"), self.choose_next_setpoint)
+            self.main_window.bind(
+                self.configs.values.get("ini", "key_binding_setpoints_next"),
+                self.choose_next_setpoint,
+            )
         if self.configs.values.get("ini", "key_binding_setpoints_set") != "-1":
             self.main_window.bind(self.configs.values.get("ini", "key_binding_setpoints_set"), self.set_setpoints)
         # connect to digital controller on startup
@@ -526,7 +674,12 @@ class PLC(tkinter.Frame):
         tkinter.messagebox.showinfo("About", m)
 
     def save_default_config(self) -> None:
-        f = tkinter.filedialog.asksaveasfilename(defaultextension=".cfg", initialdir="~", initialfile=".plc.cfg", title="Save default config to file")
+        f = tkinter.filedialog.asksaveasfilename(
+            defaultextension=".cfg",
+            initialdir="~",
+            initialfile=".plc.cfg",
+            title="Save default config to file",
+        )
         try:
             self.configs.write_default_config_file(file=f)
             self.log.debug(f"Wrote config to '{f}'")
@@ -683,16 +836,18 @@ class PLC(tkinter.Frame):
             self.electrode_motion_controller.check_buttons()
         if self.translation_stage_device != "-1":
             self.translation_stage_controller.check_buttons()
-        self.rf_generator_controller.check_buttons()
-        self.rf_generator.check_buttons()
+        # self.rf_generator_controller.check_buttons()
+        # self.rf_generator.check_buttons()
         self.gas_system.check_buttons()
-        self.rf_generator.check_buttons()
+        # self.rf_generator.check_buttons()
         self.diagnostic_particles.check_buttons()
         if self.electrode_motion_controller_device != "-1":
             self.electrode_motion.check_buttons()
         if self.translation_stage_device != "-1":
             self.translation_stage.check_buttons()
-        self.main_window.after(self.check_buttons_intervall, func=self.check_buttons)  # call update every ... milliseconds
+        self.main_window.after(
+            self.check_buttons_intervall, func=self.check_buttons
+        )  # call update every ... milliseconds
 
     def switch_debug_infos_off(self):
         self.debugprint("debug infos off")
@@ -716,7 +871,9 @@ class PLC(tkinter.Frame):
 
     def read_setpoints(self):
         self.log.debug("ask for file to read setpoints from")
-        f = tkinter.filedialog.askopenfilename(defaultextension=".cfg", initialdir="~", title="read setpoints from file")
+        f = tkinter.filedialog.askopenfilename(
+            defaultextension=".cfg", initialdir="~", title="read setpoints from file"
+        )
         try:
             if len(f) > 0:
                 self.default_setpoints_file = f
@@ -768,31 +925,31 @@ class PLC(tkinter.Frame):
             # RF
             setcurrents = False
             setphases = False
-            for i in range(12):
-                c = i % 4  # channel
-                g = round((i - c) / 4)  # generator
-                if self.rf_generator.generator[g].exists:
-                    if self.setpoints.has_option(s, "pwr_channel_%d" % (i + 1)):
-                        if self.setpoints.getboolean(s, "pwr_channel_%d" % (i + 1)):
-                            self.rf_generator.generator[g].channel[c].onoff_status_checkbutton.select()
-                        else:
-                            self.rf_generator.generator[g].channel[c].onoff_status_checkbutton.deselect()
-                        self.rf_generator.rf_channel_onoff_cmd()
-                    if self.setpoints.has_option(s, "current_channel_%d" % (i + 1)):
-                        setcurrents = True
-                        self.rf_generator.generator[g].channel[c].current_status.set(self.setpoints.getint(s, "current_channel_%d" % (i + 1)))
-                    if self.setpoints.has_option(s, "phase_channel_%d" % (i + 1)):
-                        setphases = True
-                        self.rf_generator.generator[g].channel[c].phase_status.set(self.setpoints.getint(s, "phase_channel_%d" % (i + 1)))
-                    if self.setpoints.has_option(s, "combined_channel_%d" % (i + 1)):
-                        if self.setpoints.getboolean(s, "combined_channel_%d" % (i + 1)):
-                            self.rf_generator.generator[g].channel[c].choose_checkbutton.select()
-                        else:
-                            self.rf_generator.generator[g].channel[c].choose_checkbutton.deselect()
-            if setcurrents:
-                self.rf_generator.set_currents()
-            if setphases:
-                self.rf_generator.set_phases()
+            # for i in range(12):
+            #     c = i % 4  # channel
+            #     g = round((i - c) / 4)  # generator
+            #     if self.rf_generator.generator[g].exists:
+            #         if self.setpoints.has_option(s, "pwr_channel_%d" % (i + 1)):
+            #             if self.setpoints.getboolean(s, "pwr_channel_%d" % (i + 1)):
+            #                 self.rf_generator.generator[g].channel[c].onoff_status_checkbutton.select()
+            #             else:
+            #                 self.rf_generator.generator[g].channel[c].onoff_status_checkbutton.deselect()
+            #             self.rf_generator.rf_channel_onoff_cmd()
+            #         if self.setpoints.has_option(s, "current_channel_%d" % (i + 1)):
+            #             setcurrents = True
+            #             self.rf_generator.generator[g].channel[c].current_status.set(self.setpoints.getint(s, "current_channel_%d" % (i + 1)))
+            #         if self.setpoints.has_option(s, "phase_channel_%d" % (i + 1)):
+            #             setphases = True
+            #             self.rf_generator.generator[g].channel[c].phase_status.set(self.setpoints.getint(s, "phase_channel_%d" % (i + 1)))
+            #         if self.setpoints.has_option(s, "combined_channel_%d" % (i + 1)):
+            #             if self.setpoints.getboolean(s, "combined_channel_%d" % (i + 1)):
+            #                 self.rf_generator.generator[g].channel[c].choose_checkbutton.select()
+            #             else:
+            #                 self.rf_generator.generator[g].channel[c].choose_checkbutton.deselect()
+            # if setcurrents:
+            #     self.rf_generator.set_currents()
+            # if setphases:
+            #     self.rf_generator.set_phases()
             if self.setpoints.has_option(s, "rf_on_off"):
                 if self.setpoints.getboolean(s, "rf_on_off"):
                     self.rf_generator.combined_change_button3_cmd()

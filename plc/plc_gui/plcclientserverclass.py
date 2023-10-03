@@ -30,14 +30,13 @@ import subprocess
 import threading
 import time
 import tkinter
-from typing import Dict, List
+from typing import List
 import tkinter.ttk
 from enum import Enum
 from abc import abstractmethod
 import shlex
 
 from .read_config_file import read_config_file
-from .misc.misc import threads_to_join
 from ..plc_tools import plc_socket_communication
 
 
@@ -134,7 +133,6 @@ class socket_communication_class(plc_socket_communication.tools_for_socket_commu
         starttimer = threading.Thread(target=self.start)
         starttimer.daemon = True
         starttimer.start()
-        threads_to_join.append(starttimer)
         self.lock.release()  # release the lock
 
     def start(self) -> None:
