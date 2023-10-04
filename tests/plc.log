@@ -1,0 +1,35 @@
+2023-10-03 22:34:42,428:INFO:plc: start logging in plc: Tue, 03 Oct 2023 22:34:42 +0300 MSK
+2023-10-03 22:34:42,428:INFO:plc: running with pid 15687
+2023-10-03 22:34:42,428:DEBUG:plc: Starting GUI
+2023-10-03 22:34:42,443:DEBUG:plc.gui: Initializing GUI
+2023-10-03 22:34:42,446:DEBUG:plc.gui: Found 2 cameras in config file
+2023-10-03 22:34:42,446:DEBUG:plc.gui: Found 0 acceleration sensors in config file
+2023-10-03 22:34:42,466:DEBUG:plc.plc_gui.camera: init camera window camera1
+2023-10-03 22:34:42,477:DEBUG:plc.plc_gui.camera: _create_picture_label 1696361682.477221
+2023-10-03 22:34:42,477:DEBUG:plc.plc_gui.camera: init camera window camera2
+2023-10-03 22:34:42,479:DEBUG:plc.plc_gui.camera: _create_picture_label 1696361682.479620
+2023-10-03 22:34:42,480:INFO:plc.gui.rfgc: init
+2023-10-03 22:34:42,480:INFO:plc.gui.rfgc: rf 0 gen_device: /dev/RF_GEN_01
+2023-10-03 22:34:42,480:INFO:plc.gui.rfgc: rf 0 dc_device: /dev/RF_DC_01
+2023-10-03 22:34:42,480:INFO:plc.gui.rfgc: rf 0 boudrate: 9600
+2023-10-03 22:34:42,480:INFO:plc.gui.rfgc: rf 0 databits: 8
+2023-10-03 22:34:42,481:INFO:plc.gui.rfgc: rf 0 parity: N
+2023-10-03 22:34:42,481:INFO:plc.gui.rfgc: rf 0 stopbits: 1
+2023-10-03 22:34:42,481:INFO:plc.gui.rfgc: rf 0 readtimeout: 0.0
+2023-10-03 22:34:42,481:INFO:plc.gui.rfgc: rf 0 writetimeout: 0.0
+2023-10-03 22:34:42,481:INFO:plc.gui.rfgc: rf 0 update_intervall: 222.0
+2023-10-03 22:34:42,488:DEBUG:plc.gui: create debug area
+2023-10-03 22:34:42,488:DEBUG:plc.gui: no default_setpoints_file available
+2023-10-03 22:34:55,897:INFO:plc.gui.rfgg: initiate stop pattern run
+2023-10-03 22:35:16,136:DEBUG:plc.gui.rfgg: ask for file to read pattern from
+2023-10-03 22:35:32,267:DEBUG:plc.gui: Exit called
+2023-10-03 22:35:32,268:DEBUG:plc.plc_gui.camera: stop live view
+2023-10-03 22:35:32,268:DEBUG:plc.plc_gui.camera: stop recording
+2023-10-03 22:35:32,268:DEBUG:plc.plc_gui.camera: stop camera
+2023-10-03 22:35:32,268:DEBUG:plc.plc_gui.camera: try to quit server
+2023-10-03 22:35:32,318:DEBUG:plc.plc_gui.camera: stop live view
+2023-10-03 22:35:32,319:DEBUG:plc.plc_gui.camera: stop recording
+2023-10-03 22:35:32,319:DEBUG:plc.plc_gui.camera: stop camera
+2023-10-03 22:35:32,319:DEBUG:plc.plc_gui.camera: try to quit server
+2023-10-03 22:35:32,470:DEBUG:plc.gui.dc: Joining update thread
+2023-10-03 22:35:32,470:DEBUG:plc.gui.mpc: Joining update thread
