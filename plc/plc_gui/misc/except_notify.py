@@ -17,12 +17,14 @@
 # You should have received a copy of the GNU General Public License
 # along with PlasmaLabControl.  If not, see <http://www.gnu.org/licenses/>.
 
+import sys
 import multiprocessing as mp
 
-from .misc import proccesses_to_join
+from .misc import proccesses_to_join, bcolors
 
 
 def wrapper(title: str, message: str) -> None:
+    mp.freeze_support()
     import tkinter
     from tkinter import ttk
 
@@ -40,12 +42,17 @@ def show(exc: Exception, context: str | None = None) -> None:
     title = "An exception occurred"
     message = f"""
     Exception type: {exc_type}
-    Traceback:
-    {exc.__traceback__}
+    EXC mess: {str(exc)}
     Exception context:
     {context}
+
+    Traceback:
+    {exc.__traceback__}
     """
-    mp.set_start_method("spawn")
-    p = mp.Process(target=wrapper, args=(title, message))
-    p.start()
-    proccesses_to_join.append(p)
+
+    if mp.get_start_method() == "spawn":
+        p = mp.Process(target=wrapper, args=(title, message))
+        p.start()
+        proccesses_to_join.append(p)
+    else:
+        print(bcolors.bold_red + "Cannot notify you" + bcolors.reset, file=sys.stderr)

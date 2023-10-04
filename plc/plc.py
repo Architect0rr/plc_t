@@ -46,16 +46,25 @@ from typing import Literal
 
 from . import plc_gui
 from . import plc_tools
+from .plc_gui.misc import misc
 
 
 def main() -> Literal[0]:
     parser = argparse.ArgumentParser(
         description='plc - PlasmaLabControl. For more help\ntype "pydoc plc"',
-        epilog="Author: Daniel Mohr\nDate: %s\nLicense: GNU GENERAL PUBLIC LICENSE, Version 3, 29 June 2007." % __plc_date__,
+        epilog="Author: Daniel Mohr\nDate: %s\nLicense: GNU GENERAL PUBLIC LICENSE, Version 3, 29 June 2007."
+        % __plc_date__,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument(
-        "--debug", choices=[0, 1], default=1, type=int, required=False, dest="debug", help="Set debug level. 0 no debug info (default); 1 debug to STDOUT.", metavar="debug_level"
+        "--debug",
+        choices=[0, 1],
+        default=1,
+        type=int,
+        required=False,
+        dest="debug",
+        help="Set debug level. 0 no debug info (default); 1 debug to STDOUT.",
+        metavar="debug_level",
     )
     parser.add_argument(
         "--system_config",
@@ -79,7 +88,9 @@ def main() -> Literal[0]:
 
     system_conffile: Path = Path(args.system_config).resolve()
     conffile: Path = Path(args.config).resolve()
-    configs = plc_gui.read_config_file.read_config_file(system_wide_ini_file=args.system_config, user_ini_file=args.config)
+    configs = plc_gui.read_config_file.read_config_file(
+        system_wide_ini_file=args.system_config, user_ini_file=args.config
+    )
     # logging
     log = logging.getLogger("plc")
     log.setLevel(logging.DEBUG)  # logging.DEBUG = 10
@@ -94,7 +105,8 @@ def main() -> Literal[0]:
         ch.setLevel(logging.DEBUG)  # logging.DEBUG = 10
     else:
         ch.setLevel(logging.WARNING)  # logging.WARNING = 30
-    ch.setFormatter(logging.Formatter("%(asctime)s:%(levelname)s:%(name)s: %(message)s"))
+    # ch.setFormatter(logging.Formatter("%(asctime)s:%(levelname)s:%(name)s: %(message)s"))
+    ch.setFormatter(misc.CustomFormatter())
     # add the handlers to log
     log.addHandler(fh)
     log.addHandler(ch)

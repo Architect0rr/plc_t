@@ -19,7 +19,7 @@ from typing import List, Dict, Any
 from ..plc_gui import rf_generator_controller
 
 from . import read_config_file
-from .class_rf_generator import class_rf_generator, rfg_gui
+from .class_rf_generator import rfg_gui
 
 # log = logging.getLogger("plc.rf_gen")
 # log.setLevel(logging.DEBUG)
@@ -69,45 +69,41 @@ class rf_generator_gui:
         self.frame = tkinter.LabelFrame(pw, text="RF-Generator")
         self.frame.pack()
 
-        self.power_pattern_frame = tkinter.Frame(self.frame)
-        self.power_pattern_frame.grid(column=0, row=0)
-        self.power_frame = tkinter.LabelFrame(self.power_pattern_frame, text="Power")
-        self.power_frame.pack()
-
         self.control_frame = tkinter.LabelFrame(self.frame, text="Control")
         self.control_frame.grid(column=1, row=0)
 
-        self.pattern_frame = tkinter.LabelFrame(self.power_pattern_frame, text="Pattern")
-        self.pattern_frame.pack()
-        self.power_status = tkinter.IntVar()
-        # Power
-        # init
-        self.generator: List[class_rf_generator] = []
-        self.gen_frm = tkinter.ttk.LabelFrame(self.frame, text="Generators")
-        self.gen_frm.grid()
-        self.gen_frms: List[rfg_gui] = []
-        # ['RF-Generator 1','RF-Generator 2','RF-Generator 3']
-        for g in range(3):
-            exs = self.config.values.get("RF-Generator %d" % (g + 1), "power_controller") != "-1"
-            self.generator.append(class_rf_generator(exs, g, self.config, self.log.getChild(f"rf_gen{g}")))
-            self.gen_frms.append(rfg_gui(self.gen_frm, self.generator[g], self.log.getChild(f"rfgg{g}")))
-            self.gen_frms[g].grid(row=0, column=g + 1)
+        self.power_pattern_frame = tkinter.Frame(self.frame)
+        self.power_pattern_frame.grid(column=0, row=0)
 
+        # Power
+        self.power_frame = tkinter.LabelFrame(self.power_pattern_frame, text="Power")
+        self.power_frame.pack()
         self.start_controller_button = tkinter.Button(
-            self.power_frame, text="open RS232 (rfgc)", command=self.open_rfgc, state=tkinter.NORMAL
+            self.power_frame, text="open RS232 (rfgc)", command=self.btn_open_rfgc, state=tkinter.NORMAL
         )
         self.start_controller_button.pack()
         self.stop_controller_button = tkinter.Button(
             self.power_frame,
             text="close RS232 (rfgc)",
-            command=self.close_rfgc,
+            command=self.btn_close_rfgc,
             state=tkinter.DISABLED,
         )
         self.stop_controller_button.pack()
+        # init
+        self.gen_frm = tkinter.ttk.LabelFrame(self.frame, text="Generators")
+        # self.gen_frm.grid()
+        self.gen_frms: List[rfg_gui] = []
+        # ['RF-Generator 1','RF-Generator 2','RF-Generator 3']
+        for g in range(3):
+            self.gen_frms.append(rfg_gui(self.gen_frm, self.rfgc.generator[g], self.log.getChild(f"rfgg{g}")))
+            self.gen_frms[g].grid(row=0, column=g + 1)
+
         # Pattern
+        self.pattern_frame = tkinter.LabelFrame(self.power_pattern_frame, text="Pattern")
+        self.pattern_frame.pack()
         self.pattern: Dict[str, Any] = {}
         self.pattern_file = None  # will be set later as set in config
-        self.pattern_config = None
+        self.pattern_config = configparser.ConfigParser()
         self.pattern_controller_var = tkinter.StringVar()
         self.pattern_controller_listbox = tkinter.OptionMenu(
             self.pattern_frame, self.pattern_controller_var, "microcontroller", "computer"
@@ -165,26 +161,26 @@ class rf_generator_gui:
             variable=self.pattern_on_off_status,
         )
         self.pattern_on_off_checkbutton.pack(side=tkinter.LEFT)
+
         # Control
-        self.ignite_plasma_button = tkinter.Button(self.control_frame, command=self.ignite_plasma, text="ignite plasma")
+
+        self.ignite_plasma_button = tkinter.Button(
+            self.control_frame, command=self.btn_ignite_plasma, text="ignite plasma"
+        )
         self.ignite_plasma_button.grid(column=8, row=6)
-        # self.info1 = tkinter.Button(self.control_frame, command=self.set_currents, text=" set currents:", padx=self.padx, pady=self.pady)
-        # self.info1.grid(column=1, row=1)
-        # self.info2 = tkinter.Button(self.control_frame, command=self.set_phases, text=" set phases:", padx=self.padx, pady=self.pady)
-        # self.info2.grid(column=3, row=1)
         self.info3 = tkinter.Label(self.control_frame, text=" combined Changes:")
         self.info3.grid(column=5, row=1)
-        self.combined_change_button1 = tkinter.Button(self.control_frame, command=self.pwr_on, text="Pwr On")
+        self.combined_change_button1 = tkinter.Button(self.control_frame, command=self.btn_pwr_on, text="Pwr On")
         self.combined_change_button1.grid(column=7, row=1)
         self.combined_change_button2 = tkinter.Button(
-            self.control_frame, command=self.pwr_off, text="Pwr Off", state=tkinter.DISABLED
+            self.control_frame, command=self.btn_pwr_off, text="Pwr Off", state=tkinter.DISABLED
         )
         self.combined_change_button2.grid(column=8, row=1)
 
-        self.combined_change_button3 = tkinter.Button(self.control_frame, command=self.rf_on, text="RF On")
+        self.combined_change_button3 = tkinter.Button(self.control_frame, command=self.btn_rf_on, text="RF On")
         self.combined_change_button3.grid(column=7, row=2)
         self.combined_change_button4 = tkinter.Button(
-            self.control_frame, command=self.rf_off, text="RF Off", state=tkinter.DISABLED
+            self.control_frame, command=self.btn_rf_off, text="RF Off", state=tkinter.DISABLED
         )
         self.combined_change_button4.grid(column=8, row=2)
 
@@ -244,80 +240,15 @@ class rf_generator_gui:
             self.pattern_file = self.config.values.get("RF-Generator", "pattern_file")
             self.pattern_load_file()
 
-    def open_rfgc(self):
-        self.rfgc.start_request()
-        self.start_controller_button.configure(state=tkinter.DISABLED)
-        self.stop_controller_button.configure(state=tkinter.NORMAL)
-
-    def close_rfgc(self):
-        self.rfgc.stop_request()
-        self.start_controller_button.configure(state=tkinter.NORMAL)
-        self.stop_controller_button.configure(state=tkinter.DISABLED)
-
-    # def rf_channel_onoff_cmd(self):
-    #     for g in range(3):
-    #         if self.generator[g].exists:
-    #             for i in range(4):
-    #                 if self.generator[g].channel[i].onoff_status.get() == 1:
-    #                     self.rfgc.generator[g].setpoint_channel[i].onoff = True
-    #                     log.debug("switch channel %d at generator %d to %s" % (i, g, b2onoff(True)))
-    #                 else:
-    #                     self.rfgc.generator[g].setpoint_channel[i].onoff = False
-    #                     log.debug("switch channel %d at generator %d to %s" % (i, g, b2onoff(False)))
-
-    # def set_currents(self):
-    #     cn = 1
-    #     for g in range(3):
-    #         if self.generator[g].exists:
-    #             for i in range(4):
-    #                 try:
-    #                     a = int(self.generator[g].channel[i].current_status.get())
-    #                 except Exception:
-    #                     a = None
-    #                 if a is None:
-    #                     log.warning("ERROR: do not understand current to set in channel %d" % cn)
-    #                     self.generator[g].channel[i].current_status.set(self.rfgc.generator[g].actualvalue_channel[i].current)
-    #                 else:
-    #                     if (0 <= a) and (a <= self.maxcurrent):
-    #                         self.rfgc.generator[g].setpoint_channel[i].current = max(0, min(a, self.maxcurrent))
-    #                     else:
-    #                         a = max(0, min(a, self.maxcurrent))
-    #                         self.rfgc.generator[g].setpoint_channel[i].current = a
-    #                         log.debug("wanted current %s for channel %d out of range [%d;%d]" % (a, cn, 0, self.maxcurrent))
-    #                         self.generator[g].channel[i].current_status.set(a)
-    #                 cn = cn + 1
-
-    # def set_phases(self):
-    #     cn = 1
-    #     for g in range(3):
-    #         if self.generator[g].exists:
-    #             for i in range(4):
-    #                 try:
-    #                     a = int(self.generator[g].channel[i].phase_status.get())
-    #                 except Exception:
-    #                     a = None
-    #                 if a is None:
-    #                     log.warning("ERROR: do not understand phase to set in channel %d" % cn)
-    #                     self.generator[g].channel[i].phase_status.set(self.rfgc.generator[g].actualvalue_channel[i].phase)
-    #                 else:
-    #                     if (0 <= a) and (a <= self.maxphase):
-    #                         self.rfgc.generator[g].setpoint_channel[i].phase = max(0, min(a, self.maxphase))
-    #                     else:
-    #                         a = max(0, min(a, self.maxphase))
-    #                         self.rfgc.generator[g].setpoint_channel[i].phase = a
-    #                         log.debug("wanted phase %s for channel %d out of range [%d;%d]" % (a, cn, 0, self.maxphase))
-    #                         self.generator[g].channel[i].phase_status.set(a)
-    #                 cn = cn + 1
-
-    def pattern_length_cmd_down(self):
+    def pattern_length_cmd_down(self) -> None:
         a = self.pattern_length_val.get()
         self.pattern_length_val.set(a - 100)
 
-    def pattern_length_cmd_up(self):
+    def pattern_length_cmd_up(self) -> None:
         a = self.pattern_length_val.get()
         self.pattern_length_val.set(a + 100)
 
-    def pattern_ask_for_load_file(self):
+    def pattern_ask_for_load_file(self) -> None:
         self.log.debug("ask for file to read pattern from")
         f = tkinter.filedialog.askopenfilename(defaultextension=".cfg", initialdir="~", title="read pattern from file")
         try:
@@ -327,9 +258,8 @@ class rf_generator_gui:
         except Exception:
             pass
 
-    def pattern_load_file(self):
+    def pattern_load_file(self) -> None:
         if self.pattern_file is not None:
-            self.pattern_config = configparser.ConfigParser()
             self.pattern_config.read(os.path.expanduser(self.pattern_file))
             if (
                 self.pattern_config.has_option("pattern", "number_of_generators")
@@ -363,9 +293,9 @@ class rf_generator_gui:
             else:
                 self.log.warning("do not understand pattern file '%s'" % self.pattern_file)
                 self.pattern_file = None
-                self.pattern_config = None
+                self.pattern_config = configparser.ConfigParser()
 
-    def pattern_write_to_generator(self):
+    def pattern_write_to_generator(self) -> None:
         self.pattern["controller"] = self.pattern_controller_var.get()
         self.pattern["pattern_intervall_length"] = self.pattern_length_val.get()
         if self.pattern["controller"] == "microcontroller":
@@ -444,46 +374,62 @@ class rf_generator_gui:
             self.rfgc.unrun_pattern()
             # self.rfgc.setpoint["run_pattern"] = False
 
-    def pwr_on(self):
+    def btn_open_rfgc(self) -> None:
+        self.log.debug("btn_open_rfgc")
+        self.gen_frm.grid()
+        self.rfgc.start_request()
+        self.start_controller_button.configure(state=tkinter.DISABLED)
+        self.stop_controller_button.configure(state=tkinter.NORMAL)
+
+    def btn_close_rfgc(self) -> None:
+        self.log.debug("btn_close_rfgc")
+        self.gen_frm.grid_forget()
+        self.rfgc.stop_request()
+        self.start_controller_button.configure(state=tkinter.NORMAL)
+        self.stop_controller_button.configure(state=tkinter.DISABLED)
+
+    def btn_pwr_on(self) -> None:
         # Power On
+        self.log.debug("btn_pwr_on")
         self.combined_change_button1.configure(state=tkinter.DISABLED)
         self.combined_change_button2.configure(state=tkinter.NORMAL)
         for g in range(3):
-            if self.generator[g].exists:
+            if self.gen_frms[g].exists:
                 self.gen_frms[g].pwr_on()
 
-    def pwr_off(self):
+    def btn_pwr_off(self) -> None:
         # Power Off
+        self.log.debug("btn_pwr_off")
         self.combined_change_button1.configure(state=tkinter.NORMAL)
         self.combined_change_button2.configure(state=tkinter.DISABLED)
         for g in range(3):
-            if self.generator[g].exists:
+            if self.gen_frms[g].exists:
                 self.gen_frms[g].pwr_off()
 
-    def rf_on(self):
+    def btn_rf_on(self) -> None:
         # RF Off
+        self.log.debug("btn_rf_on")
         self.combined_change_button3.configure(state=tkinter.DISABLED)
         self.combined_change_button4.configure(state=tkinter.NORMAL)
         for g in range(3):
-            if self.generator[g].exists:
-                for i in range(4):
-                    if (self.RF_only_master is False) or (g == 0):
-                        self.rfgc.generator[g].setpoint_rf_onoff = True
+            if self.gen_frms[g].exists:
+                if (self.RF_only_master is False) or (g == 0):
+                    self.rfgc.generator[g].rf_on()
 
-    def rf_off(self):
+    def btn_rf_off(self) -> None:
         # RF On
+        self.log.debug("btn_rf_off")
         self.combined_change_button3.configure(state=tkinter.NORMAL)
         self.combined_change_button4.configure(state=tkinter.DISABLED)
         for g in range(3):
-            if self.generator[g].exists:
-                for i in range(4):
-                    if (self.RF_only_master is False) or (g == 0):
-                        self.rfgc.generator[g].setpoint_rf_onoff = False
+            if self.gen_frms[g].exists:
+                if (self.RF_only_master is False) or (g == 0):
+                    self.rfgc.generator[g].rf_off()
 
-    def ccc(self, a):
+    def ccc(self, a) -> None:
         # change current
         for g in range(3):
-            if self.generator[g].exists:
+            if self.gen_frms[g].exists:
                 for i in range(4):
                     current = max(
                         0,
@@ -494,24 +440,9 @@ class rf_generator_gui:
                     )
                     self.gen_frms[g].sc(current)
 
-    def ignite_plasma(self):
+    def btn_ignite_plasma(self):
         # ignite plasma
         self.rfgc.ignite()
-        # for g in range(3):
-        #     if self.rfgc.generator[g].exists:
-        #         self.rfgc.generator[g].setpoint_ignite_plasma = True
-
-    # def power_0(self) -> None:
-    #     self.power(0)
-
-    # def power_1(self) -> None:
-    #     self.power(1)
-
-    # def power_2(self) -> None:
-    #     self.power(2)
-
-    # def power_3(self) -> None:
-    #     self.power(4)
 
     # def power(self, g):
     #     if self.generator[g].exists:

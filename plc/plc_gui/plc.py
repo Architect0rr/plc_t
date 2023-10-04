@@ -28,12 +28,11 @@ import os
 import sys
 import time
 import logging
-import argparse
 import threading
 import subprocess
 import configparser
 from pathlib import Path
-from typing import Optional, Dict, Any, List
+from typing import Dict, Any, List, NoReturn
 
 import PIL.ImageTk
 
@@ -41,7 +40,6 @@ import tkinter
 import tkinter.messagebox
 import tkinter.filedialog
 from tkinter import ttk
-from tkinter import constants as tcs
 
 from . import camera
 from . import gas_system
@@ -53,7 +51,7 @@ from . import translation_stage
 from . import acceleration_sensor
 from . import diagnostic_particles
 
-from .misc import except_notify
+# from .misc import except_notify
 from .plcclientserverclass import scs_gui
 
 from ..plc_tools import plclogclasses
@@ -72,7 +70,7 @@ class PLC(tkinter.Frame):
         # app.grid(sticky=tcs.NSEW)
         # root.grid_columnconfigure(0, weight=1)
         # root.grid_rowconfigure(0, weight=1)
-        root.resizable(True, False)
+        root.resizable(True, True)
         root.after(app.update_intervall, func=app.update)  # call update every ... milliseconds
         root.after(app.check_buttons_intervall, func=app.check_buttons)  # call update every ... milliseconds
         root.mainloop()
@@ -328,21 +326,21 @@ class PLC(tkinter.Frame):
         # ########################
 
         # create block for acceleration sensor
-        self.acceleration_sensor = []
-        for i in range(self.configs.number_of_acceleration_sensor):
-            self.acceleration_sensor += [
-                acceleration_sensor.acceleration_sensor(
-                    config=self.configs,
-                    confsect="acceleration_sensor%d" % (i + 1),
-                    pw=self.acceleration_sensor_tabs[i],
-                )
-            ]
-            self.acceleration_sensor[i].extern_update_start(
-                extern_stringvar=self.info_area_acceleration_sensor_vals[i],
-                notebook=self.tabs,
-                notebookindex=self.acceleration_sensor_notebook_index[i],
-                notebookextern=0,
-            )
+        self.acceleration_sensor: List[acceleration_sensor.acceleration_sensor] = []
+        # for i in range(self.configs.number_of_acceleration_sensor):
+        #     self.acceleration_sensor += [
+        #         acceleration_sensor.acceleration_sensor(
+        #             config=self.configs,
+        #             confsect="acceleration_sensor%d" % (i + 1),
+        #             pw=self.acceleration_sensor_tabs[i],
+        #         )
+        #     ]
+        #     self.acceleration_sensor[i].extern_update_start(
+        #         extern_stringvar=self.info_area_acceleration_sensor_vals[i],
+        #         notebook=self.tabs,
+        #         notebookindex=self.acceleration_sensor_notebook_index[i],
+        #         notebookextern=0,
+        #     )
 
         # ########################
         # ##### M A I N  TAB ##### : Control
@@ -365,7 +363,6 @@ class PLC(tkinter.Frame):
         self.digital_controller_window.grid(column=0, row=0)
         self.digital_controller = controller.digital_controller(self.log.getChild("dc"), self.configs)
         self.controller["dc"] = self.digital_controller
-        # self.controller["dc"].gui()
         self.controller["dc"].set_default_values()
         scs_gui(self.digital_controller_window, self.digital_controller)
 
@@ -375,7 +372,6 @@ class PLC(tkinter.Frame):
         self.multi_purpose_controller_window.grid(column=1, row=0)
         self.multi_purpose_controller = controller.multi_purpose_controller(self.log.getChild("mpc"), self.configs)
         self.controller["mpc"] = self.multi_purpose_controller
-        # self.controller["mpc"].gui()
         self.controller["mpc"].set_default_values()
         scs_gui(self.multi_purpose_controller_window, self.multi_purpose_controller)
 
@@ -411,38 +407,28 @@ class PLC(tkinter.Frame):
             self.controller["tsc"].gui()
             self.controller["tsc"].set_default_values()
 
-        # rf_generator controller
-        self.rf_generator_controller_window = tkinter.LabelFrame(
-            self.controller_window, text="rf_generator", labelanchor="n"
-        )
-        self.rf_generator_controller_window.grid(column=4, row=0)
-        self.rf_generator_controller = controller.rf_generator_controller(
-            config=self.configs, _log=self.log.getChild("rfgc")
-        )
-        self.controller["rfgc"] = self.rf_generator_controller
-        # self.controller["rfgc"].gui()
-        # self.controller["rfgc"].set_default_values()
-        # controller.rfgc_gui(self.rf_generator_controller_window, self.rf_generator_controller)
-
         # create block for gas system
-        self.gas_system_window = tkinter.LabelFrame(self.control_window1, text="Gas System")
+        self.gas_system_window = ttk.LabelFrame(self.control_window1, text="Gas System")
         # self.gas_system_window.pack()
         self.gas_system_window.grid(column=1, row=0)
         self.gas_system = gas_system.gas_system(
             config=self.configs,
             pw=self.gas_system_window,
-            debugprint=self.debugprint,
-            controller=self.controller,
+            _log=self.log.getChild("GS"),
+            controller=self.controller
         )
+
         # create block for RF-generator
+        self.rf_generator_controller = controller.rf_generator_controller(
+            config=self.configs, _log=self.log.getChild("rfgc")
+        )
+        self.controller["rfgc"] = self.rf_generator_controller
         self.rf_generator_window = tkinter.Frame(self.control_window, relief="solid")
         self.rf_generator_window.pack()
         self.rf_generator = rf_generator.rf_generator_gui(
-            config=self.configs,
-            pw=self.rf_generator_window,
-            controller=self.controller,
-            _log=self.log.getChild("rfgg"),
+            config=self.configs, pw=self.rf_generator_window, controller=self.controller, _log=self.log.getChild("rfgg")
         )
+
         # create block for diagnostic/particles
         self.diagnostic_particles_window = tkinter.LabelFrame(self.control_window, text="Diagnostics/Particles")
         self.diagnostic_particles_window.pack()
@@ -573,7 +559,7 @@ class PLC(tkinter.Frame):
         # start environment_sensor_5 on startup
         self.start_environment_sensor_5()
 
-    def exit(self):
+    def exit(self) -> NoReturn:
         self.log.debug("Exit called")
         try:
             self.stop_live_view_cameras()
@@ -923,8 +909,8 @@ class PLC(tkinter.Frame):
                 self.gas_system.mass_flow_set_flow_rate_val.set(self.setpoints.get(s, "mass_flow"))
                 self.gas_system.mass_flow_set_flow_rate_command()
             # RF
-            setcurrents = False
-            setphases = False
+            # setcurrents = False
+            # setphases = False
             # for i in range(12):
             #     c = i % 4  # channel
             #     g = round((i - c) / 4)  # generator
@@ -950,14 +936,14 @@ class PLC(tkinter.Frame):
             #     self.rf_generator.set_currents()
             # if setphases:
             #     self.rf_generator.set_phases()
-            if self.setpoints.has_option(s, "rf_on_off"):
-                if self.setpoints.getboolean(s, "rf_on_off"):
-                    self.rf_generator.combined_change_button3_cmd()
-                else:
-                    self.rf_generator.combined_change_button4_cmd()
-            if self.setpoints.has_option(s, "ignite_plasma"):
-                if self.setpoints.getboolean(s, "ignite_plasma"):
-                    self.rf_generator.ignite_plasma()
+            # if self.setpoints.has_option(s, "rf_on_off"):
+            #     if self.setpoints.getboolean(s, "rf_on_off"):
+            #         self.rf_generator.combined_change_button3_cmd()
+            #     else:
+            #         self.rf_generator.combined_change_button4_cmd()
+            # if self.setpoints.has_option(s, "ignite_plasma"):
+            #     if self.setpoints.getboolean(s, "ignite_plasma"):
+            #         self.rf_generator.ignite_plasma()
 
     def choose_setpoint(self, i=0):
         self.setpoints_choose = i

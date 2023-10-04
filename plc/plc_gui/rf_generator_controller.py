@@ -7,8 +7,9 @@ Date: 2013-01-26
 import logging
 import logging.handlers
 import time
-import tkinter
-import tkinter.ttk
+
+# import tkinter
+# import tkinter.ttk
 from typing import Dict, List, Any
 
 from .class_rf_generator import class_rf_generator
@@ -43,7 +44,7 @@ class rf_generator_controller:
         for g in range(3):
             # ['RF-Generator 1','RF-Generator 2','RF-Generator 3']
             exs = self.config.values.get(f"RF-Generator {g + 1}", "power_controller") != "-1"
-            self.generator.append(class_rf_generator(exs, g, self.config, self.log.getChild("rf_gen")))
+            self.generator.append(class_rf_generator(exs, g, self.config, self.log.getChild(f"rf_gen{g}")))
             if exs:
                 self.log.info("rf %d gen_device: %s" % (g, self.generator[g].gen_device))
                 self.log.info("rf %d dc_device: %s" % (g, self.generator[g].dc_device))
@@ -165,22 +166,24 @@ class rf_generator_controller:
                     self.log.info(f"To rf-gen {g}: {wtg}")
                     self.generator[g].dev_gen.write(wtg.encode("utf-8"))
 
-    def update(self) -> None:
-        """if necessary write values self.setpoint to device
-        and read them from device to self.actualvalue
+    # def update(self) -> None:
+    #     """if necessary write values self.setpoint to device
+    #     and read them from device to self.actualvalue
 
-        Author: Daniel Mohr
-        Date: 2012-09-07
-        """
-        if self.connected:
-            for g in range(3):
-                if self.generator[g].exists:
-                    self.generator[g].update()
+    #     Author: Daniel Mohr
+    #     Date: 2012-09-07
+    #     """
+    #     if self.connected:
+    #         for g in range(3):
+    #             if self.generator[g].exists:
+    #                 self.generator[g].update()
 
-    def start_request(self):
+    def start_request(self) -> None:
+        self.log.debug("Start request")
         self.start()
 
     def start(self):
+        self.log.debug("Starting")
         self.connected = True
         for g in range(self.generators_count):
             if self.generator[g].exists:
@@ -195,29 +198,13 @@ class rf_generator_controller:
     #             self.start_button.configure(state=tkinter.NORMAL)
     #             self.stop_button.configure(state=tkinter.DISABLED)
 
-    def stop_request(self):
+    def stop_request(self) -> None:
+        self.log.debug("Stop request")
         self.stop()
 
-    def stop(self):
+    def stop(self) -> None:
+        self.log.debug("Stopping")
         for g in range(self.generators_count):
-            if self.generator[g].exists and self.generator[g].dev_gen.is_open:
-                self.log.info(f"Stoping rf-generator gen {g}")
-                try:
-                    self.generator[g].dev_gen.close()
-                    self.log.debug(f"Closed generator gen {g + 1}")
-                except Exception:
-                    self.generator[g].exists = False
-                    self.log.debug(f"ERROR: cannot close generator gen {g + 1}")
-            if self.generator[g].exists and self.generator[g].dev_dc.is_open:
-                self.log.debug(f"Stoping rf-generator dc {g}")
-                try:
-                    self.generator[g].dev_dc.write(b"#o")
-                except Exception:
-                    pass
-                try:
-                    self.generator[g].dev_dc.close()
-                    self.log.debug(f"Closed generator dc {g + 1}")
-                except Exception:
-                    self.generator[g].exists = False
-                    self.log.debug(f"ERROR: cannot close generator dc {g + 1}")
+            if self.generator[g].exists:
+                self.generator[g].close_serial()
         self.connected = False
