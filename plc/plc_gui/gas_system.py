@@ -146,9 +146,7 @@ class gas_system:
         )
         self.mass_flow_set_flow_rate_entry.grid(column=2, row=0)
         self.mass_flow_set_flow_rate_button = tkinter.Button(
-            self.mass_flow_frame,
-            command=self.mass_flow_set_flow_rate_command,
-            text="set"
+            self.mass_flow_frame, command=self.mass_flow_set_flow_rate_command, text="set"
         )
         self.mass_flow_set_flow_rate_button.grid(column=3, row=0)
         self.mass_flow_flow_rate_val = tkinter.StringVar()
@@ -356,11 +354,11 @@ class gas_system:
         # self.mass_flow_flow_rate_val.set("%d ADC" % self.controller[ctr].actualvalue[port][channel])
 
     def check_buttons(self):
-        if self.controller["dc"].isconnect:
+        if self.controller["dc"].connected:
             self.membran_pump_checkbutton.configure(state=tkinter.NORMAL)
         else:
             self.membran_pump_checkbutton.configure(state=tkinter.DISABLED)
-        if self.controller["mpc"].isconnect:
+        if self.controller["mpc"].connected:
             self.turbo_pump_1_checkbutton.configure(state=tkinter.NORMAL)
             self.turbo_pump_2_checkbutton.configure(state=tkinter.NORMAL)
             self.mass_flow_checkbutton.configure(state=tkinter.NORMAL)
@@ -379,8 +377,6 @@ class gas_gui(tkinter.ttk.LabelFrame):
         super().__init__(_root, text="GAS sys")
         self.backend = _backend
         self.log = _log
-
-
 
         # self.channels_frame = tkinter.ttk.LabelFrame(self, text="Channels")
         # self.channels_frame.pack()

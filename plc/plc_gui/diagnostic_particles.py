@@ -19,7 +19,13 @@ class diagnostic_particles:
     Date: 2012-11-27
     """
 
-    def __init__(self, config: read_config_file.read_config_file, pw: tkinter.LabelFrame, debugprint: Callable[[str], None], controller: Dict[str, Any]) -> None:
+    def __init__(
+        self,
+        config: read_config_file.read_config_file,
+        pw: tkinter.LabelFrame,
+        debugprint: Callable[[str], None],
+        controller: Dict[str, Any],
+    ) -> None:
         # def __init__(self, config=None, pw=None, debugprint=None, controller=None):
         """__init__(self,config=None,pw=None,debugprint=None,controller=None)
 
@@ -59,76 +65,128 @@ class diagnostic_particles:
         self.laser2_frame = tkinter.Frame(self.laser_frame)
         self.laser2_frame.grid(column=1, row=1)
         self.laser_status = tkinter.IntVar()
-        self.laser_checkbutton = tkinter.Checkbutton(self.laser_frame_0, text="Laser Power", command=self.laser, variable=self.laser_status, state=tkinter.DISABLED)
+        self.laser_checkbutton = tkinter.Checkbutton(
+            self.laser_frame_0,
+            text="Laser Power",
+            command=self.laser,
+            variable=self.laser_status,
+            state=tkinter.DISABLED,
+        )
         self.laser_checkbutton.grid(row=1, column=0)
         self.laser_status_val = tkinter.StringVar()
-        self.laser_status_val_label = tkinter.Label(self.laser_frame_0, textvariable=self.laser_status_val, height=1, width=3)
+        self.laser_status_val_label = tkinter.Label(
+            self.laser_frame_0, textvariable=self.laser_status_val, height=1, width=3
+        )
         self.laser_status_val.set("val")
         self.laser_status_val_label.grid(row=1, column=1)
         # Laser 1
         self.laser1_status = tkinter.IntVar()
         self.laser1_checkbutton = tkinter.Checkbutton(
-            self.laser1_frame, text="Laser 1", command=self.laser1, variable=self.laser1_status, state=tkinter.DISABLED, offvalue=False, onvalue=True
+            self.laser1_frame,
+            text="Laser 1",
+            command=self.laser1,
+            variable=self.laser1_status,
+            state=tkinter.DISABLED,
+            offvalue=False,
+            onvalue=True,
         )
         self.laser1_checkbutton.grid(column=0, row=0)
         self.laser1_status_val = tkinter.StringVar()
-        self.laser1_status_label = tkinter.Label(self.laser1_frame, textvariable=self.laser1_status_val, height=1, width=5)
+        self.laser1_status_label = tkinter.Label(
+            self.laser1_frame, textvariable=self.laser1_status_val, height=1, width=5
+        )
         self.laser1_status_val.set("val")
         self.laser1_status_label.grid(column=1, row=0)
         self.laser1_set_diode_voltage_val = tkinter.DoubleVar()
-        self.laser1_set_diode_voltage_entry = tkinter.Entry(self.laser1_frame, textvariable=self.laser1_set_diode_voltage_val, width=6)
+        self.laser1_set_diode_voltage_entry = tkinter.Entry(
+            self.laser1_frame, textvariable=self.laser1_set_diode_voltage_val, width=6
+        )
         self.laser1_set_diode_voltage_entry.grid(column=2, row=0)
-        self.laser1_set_diode_voltage_button = tkinter.Button(self.laser1_frame, command=self.laser1_set_diode_voltage_command, text="set V", padx=self.padx, pady=self.pady)
+        self.laser1_set_diode_voltage_button = tkinter.Button(
+            self.laser1_frame,
+            command=self.laser1_set_diode_voltage_command,
+            text="set V",
+            padx=self.padx,
+            pady=self.pady,
+        )
         self.laser1_set_diode_voltage_button.grid(column=3, row=0)
         self.laser1_diode_voltage_label1 = tkinter.Label(self.laser1_frame, text="Voltage: ")
         self.laser1_diode_voltage_label1.grid(column=4, row=0)
         self.laser1_diode_voltage_val = tkinter.StringVar()
-        self.laser1_diode_voltage_label = tkinter.Label(self.laser1_frame, textvariable=self.laser1_diode_voltage_val, height=1, width=8)
+        self.laser1_diode_voltage_label = tkinter.Label(
+            self.laser1_frame, textvariable=self.laser1_diode_voltage_val, height=1, width=8
+        )
         self.laser1_diode_voltage_val.set("0")
         self.laser1_diode_voltage_label.grid(column=5, row=0)
         self.laser1_diode_current_label1 = tkinter.Label(self.laser1_frame, text="Current: ")
         self.laser1_diode_current_label1.grid(column=6, row=0)
         self.laser1_diode_current_val = tkinter.StringVar()
-        self.laser1_diode_current_label = tkinter.Label(self.laser1_frame, textvariable=self.laser1_diode_current_val, height=1, width=11)
+        self.laser1_diode_current_label = tkinter.Label(
+            self.laser1_frame, textvariable=self.laser1_diode_current_val, height=1, width=11
+        )
         self.laser1_diode_current_val.set("0")
         self.laser1_diode_current_label.grid(column=7, row=0)
         self.laser1_diode_power_label1 = tkinter.Label(self.laser1_frame, text="Power: ")
         self.laser1_diode_power_label1.grid(column=8, row=0)
         self.laser1_diode_power_val = tkinter.StringVar()
-        self.laser1_diode_power_label = tkinter.Label(self.laser1_frame, textvariable=self.laser1_diode_power_val, height=1, width=9)
+        self.laser1_diode_power_label = tkinter.Label(
+            self.laser1_frame, textvariable=self.laser1_diode_power_val, height=1, width=9
+        )
         self.laser1_diode_power_val.set("0")
         self.laser1_diode_power_label.grid(column=9, row=0)
         # Laser 2
         self.laser2_status = tkinter.IntVar()
         self.laser2_checkbutton = tkinter.Checkbutton(
-            self.laser2_frame, text="Laser 2", command=self.laser2, variable=self.laser2_status, state=tkinter.DISABLED, offvalue=False, onvalue=True
+            self.laser2_frame,
+            text="Laser 2",
+            command=self.laser2,
+            variable=self.laser2_status,
+            state=tkinter.DISABLED,
+            offvalue=False,
+            onvalue=True,
         )
         self.laser2_checkbutton.grid(column=0, row=0)
         self.laser2_status_val = tkinter.StringVar()
-        self.laser2_status_label = tkinter.Label(self.laser2_frame, textvariable=self.laser2_status_val, height=1, width=5)
+        self.laser2_status_label = tkinter.Label(
+            self.laser2_frame, textvariable=self.laser2_status_val, height=1, width=5
+        )
         self.laser2_status_val.set("val")
         self.laser2_status_label.grid(column=1, row=0)
         self.laser2_set_diode_voltage_val = tkinter.DoubleVar()
-        self.laser2_set_diode_voltage_entry = tkinter.Entry(self.laser2_frame, textvariable=self.laser2_set_diode_voltage_val, width=6)
+        self.laser2_set_diode_voltage_entry = tkinter.Entry(
+            self.laser2_frame, textvariable=self.laser2_set_diode_voltage_val, width=6
+        )
         self.laser2_set_diode_voltage_entry.grid(column=2, row=0)
-        self.laser2_set_diode_voltage_button = tkinter.Button(self.laser2_frame, command=self.laser2_set_diode_voltage_command, text="set V", padx=self.padx, pady=self.pady)
+        self.laser2_set_diode_voltage_button = tkinter.Button(
+            self.laser2_frame,
+            command=self.laser2_set_diode_voltage_command,
+            text="set V",
+            padx=self.padx,
+            pady=self.pady,
+        )
         self.laser2_set_diode_voltage_button.grid(column=3, row=0)
         self.laser2_diode_voltage_label1 = tkinter.Label(self.laser2_frame, text="Voltage: ")
         self.laser2_diode_voltage_label1.grid(column=4, row=0)
         self.laser2_diode_voltage_val = tkinter.StringVar()
-        self.laser2_diode_voltage_label = tkinter.Label(self.laser2_frame, textvariable=self.laser2_diode_voltage_val, height=1, width=8)
+        self.laser2_diode_voltage_label = tkinter.Label(
+            self.laser2_frame, textvariable=self.laser2_diode_voltage_val, height=1, width=8
+        )
         self.laser2_diode_voltage_val.set("0")
         self.laser2_diode_voltage_label.grid(column=5, row=0)
         self.laser2_diode_current_label1 = tkinter.Label(self.laser2_frame, text="Current: ")
         self.laser2_diode_current_label1.grid(column=6, row=0)
         self.laser2_diode_current_val = tkinter.StringVar()
-        self.laser2_diode_current_label = tkinter.Label(self.laser2_frame, textvariable=self.laser2_diode_current_val, height=1, width=11)
+        self.laser2_diode_current_label = tkinter.Label(
+            self.laser2_frame, textvariable=self.laser2_diode_current_val, height=1, width=11
+        )
         self.laser2_diode_current_val.set("0")
         self.laser2_diode_current_label.grid(column=7, row=0)
         self.laser2_diode_power_label1 = tkinter.Label(self.laser2_frame, text="Power: ")
         self.laser2_diode_power_label1.grid(column=8, row=0)
         self.laser2_diode_power_val = tkinter.StringVar()
-        self.laser2_diode_power_label = tkinter.Label(self.laser2_frame, textvariable=self.laser2_diode_power_val, height=1, width=9)
+        self.laser2_diode_power_label = tkinter.Label(
+            self.laser2_frame, textvariable=self.laser2_diode_power_val, height=1, width=9
+        )
         self.laser2_diode_power_val.set("0")
         self.laser2_diode_power_label.grid(column=9, row=0)
         # dispensers
@@ -170,34 +228,54 @@ class diagnostic_particles:
                 self.dispensers[d]["gui"]["shakes"] = tkinter.IntVar()
                 self.dispensers[d]["gui"]["shakes"].set(int(self.dispensers[d]["shakes"]))
                 self.dispensers[d]["gui"]["shakes_entry"] = tkinter.Entry(
-                    self.dispensers[d]["gui"]["frame"], textvariable=self.dispensers[d]["gui"]["shakes"], width=3, state=tkinter.DISABLED
+                    self.dispensers[d]["gui"]["frame"],
+                    textvariable=self.dispensers[d]["gui"]["shakes"],
+                    width=3,
+                    state=tkinter.DISABLED,
                 )
                 self.dispensers[d]["gui"]["shakes_entry"].grid(column=1, row=0)
-                self.dispensers[d]["gui"]["shakes_label"] = tkinter.Label(self.dispensers[d]["gui"]["frame"], text="shakes. ")
+                self.dispensers[d]["gui"]["shakes_label"] = tkinter.Label(
+                    self.dispensers[d]["gui"]["frame"], text="shakes. "
+                )
                 self.dispensers[d]["gui"]["shakes_label"].grid(column=2, row=0)
                 self.dispensers[d]["gui"]["Ton"] = tkinter.IntVar()
                 self.dispensers[d]["gui"]["Ton"].set(int(self.dispensers[d]["Ton"]))
-                self.dispensers[d]["gui"]["Ton_label1"] = tkinter.Label(self.dispensers[d]["gui"]["frame"], text="T_on: ")
+                self.dispensers[d]["gui"]["Ton_label1"] = tkinter.Label(
+                    self.dispensers[d]["gui"]["frame"], text="T_on: "
+                )
                 self.dispensers[d]["gui"]["Ton_label1"].grid(column=3, row=0)
                 self.dispensers[d]["gui"]["Ton_entry"] = tkinter.Entry(
-                    self.dispensers[d]["gui"]["frame"], textvariable=self.dispensers[d]["gui"]["Ton"], width=5, state=tkinter.DISABLED
+                    self.dispensers[d]["gui"]["frame"],
+                    textvariable=self.dispensers[d]["gui"]["Ton"],
+                    width=5,
+                    state=tkinter.DISABLED,
                 )
                 self.dispensers[d]["gui"]["Ton_entry"].grid(column=4, row=0)
                 self.dispensers[d]["gui"]["Ton_label"] = tkinter.Label(self.dispensers[d]["gui"]["frame"], text="ms. ")
                 self.dispensers[d]["gui"]["Ton_label"].grid(column=5, row=0)
                 self.dispensers[d]["gui"]["Toff"] = tkinter.IntVar()
                 self.dispensers[d]["gui"]["Toff"].set(int(self.dispensers[d]["Toff"]))
-                self.dispensers[d]["gui"]["Toff_label1"] = tkinter.Label(self.dispensers[d]["gui"]["frame"], text="T_off: ")
+                self.dispensers[d]["gui"]["Toff_label1"] = tkinter.Label(
+                    self.dispensers[d]["gui"]["frame"], text="T_off: "
+                )
                 self.dispensers[d]["gui"]["Toff_label1"].grid(column=6, row=0)
                 self.dispensers[d]["gui"]["Toff_entry"] = tkinter.Entry(
-                    self.dispensers[d]["gui"]["frame"], textvariable=self.dispensers[d]["gui"]["Toff"], width=5, state=tkinter.DISABLED
+                    self.dispensers[d]["gui"]["frame"],
+                    textvariable=self.dispensers[d]["gui"]["Toff"],
+                    width=5,
+                    state=tkinter.DISABLED,
                 )
                 self.dispensers[d]["gui"]["Toff_entry"].grid(column=7, row=0)
                 self.dispensers[d]["gui"]["Toff_label"] = tkinter.Label(self.dispensers[d]["gui"]["frame"], text="ms. ")
                 self.dispensers[d]["gui"]["Toff_label"].grid(column=8, row=0)
 
                 self.dispensers[d]["gui"]["shake"] = tkinter.Button(
-                    self.dispensers[d]["gui"]["frame"], command=self.dispensers[d]["gui"]["cmd"], state=tkinter.DISABLED, text="do the shake", padx=self.padx, pady=self.pady
+                    self.dispensers[d]["gui"]["frame"],
+                    command=self.dispensers[d]["gui"]["cmd"],
+                    state=tkinter.DISABLED,
+                    text="do the shake",
+                    padx=self.padx,
+                    pady=self.pady,
                 )
                 self.dispensers[d]["gui"]["shake"].grid(column=9, row=0)
 
@@ -261,7 +339,9 @@ class diagnostic_particles:
         self.debugprint("switch laser power to %s" % b2onoff(s))
         ctr = self.config.values.get("laser", "laser_power_status_controller")
         self.controller[ctr].lock.acquire()  # lock
-        self.controller[ctr].setpoint[self.config.values.get("laser", "laser_power_status_port")][self.config.values.getint("laser", "laser_power_status_channel")] = s
+        self.controller[ctr].setpoint[self.config.values.get("laser", "laser_power_status_port")][
+            self.config.values.getint("laser", "laser_power_status_channel")
+        ] = s
         self.controller[ctr].lock.release()  # release the lock
 
     def laser1(self):
@@ -272,7 +352,9 @@ class diagnostic_particles:
         self.debugprint("switch laser1 power to %s" % b2onoff(s))
         ctr = self.config.values.get("laser", "laser1_power_status_controller")
         self.controller[ctr].lock.acquire()  # lock
-        self.controller[ctr].setpoint[self.config.values.get("laser", "laser1_power_status_port")][self.config.values.getint("laser", "laser1_power_status_channel")] = s
+        self.controller[ctr].setpoint[self.config.values.get("laser", "laser1_power_status_port")][
+            self.config.values.getint("laser", "laser1_power_status_channel")
+        ] = s
         self.controller[ctr].lock.release()  # release the lock
 
     def laser1_set_diode_voltage_command(self):
@@ -308,7 +390,9 @@ class diagnostic_particles:
         self.debugprint("switch laser2 power to %s" % b2onoff(s))
         ctr = self.config.values.get("laser", "laser2_power_status_controller")
         self.controller[ctr].lock.acquire()  # lock
-        self.controller[ctr].setpoint[self.config.values.get("laser", "laser2_power_status_port")][self.config.values.getint("laser", "laser2_power_status_channel")] = s
+        self.controller[ctr].setpoint[self.config.values.get("laser", "laser2_power_status_port")][
+            self.config.values.getint("laser", "laser2_power_status_channel")
+        ] = s
         self.controller[ctr].lock.release()  # release the lock
 
     def laser2_set_diode_voltage_command(self):
@@ -340,66 +424,74 @@ class diagnostic_particles:
         """update every dynamic read values"""
         self.laser_status_val.set(
             b2onoff(
-                self.controller[self.config.values.get("laser", "laser_power_status_controller")].actualvalue[self.config.values.get("laser", "laser_power_status_port")][
-                    self.config.values.getint("laser", "laser_power_status_channel")
-                ]
+                self.controller[self.config.values.get("laser", "laser_power_status_controller")].actualvalue[
+                    self.config.values.get("laser", "laser_power_status_port")
+                ][self.config.values.getint("laser", "laser_power_status_channel")]
             )
         )
         self.laser1_status_val.set(
             b2onoff(
-                self.controller[self.config.values.get("laser", "laser1_power_status_controller")].actualvalue[self.config.values.get("laser", "laser1_power_status_port")][
-                    self.config.values.getint("laser", "laser1_power_status_channel")
-                ]
+                self.controller[self.config.values.get("laser", "laser1_power_status_controller")].actualvalue[
+                    self.config.values.get("laser", "laser1_power_status_port")
+                ][self.config.values.getint("laser", "laser1_power_status_channel")]
             )
         )
         self.laser2_status_val.set(
             b2onoff(
-                self.controller[self.config.values.get("laser", "laser2_power_status_controller")].actualvalue[self.config.values.get("laser", "laser2_power_status_port")][
-                    self.config.values.getint("laser", "laser2_power_status_channel")
-                ]
+                self.controller[self.config.values.get("laser", "laser2_power_status_controller")].actualvalue[
+                    self.config.values.get("laser", "laser2_power_status_port")
+                ][self.config.values.getint("laser", "laser2_power_status_channel")]
             )
         )
         self.laser1_diode_voltage_val.set(
             "%.2f V"
             % (
-                self.controller[self.config.values.get("laser", "laser1_diode_voltage_controller")].actualvalue[self.config.values.get("laser", "laser1_diode_voltage_port")][
-                    self.config.values.getint("laser", "laser1_diode_voltage_channel")
-                ]
+                self.controller[self.config.values.get("laser", "laser1_diode_voltage_controller")].actualvalue[
+                    self.config.values.get("laser", "laser1_diode_voltage_port")
+                ][self.config.values.getint("laser", "laser1_diode_voltage_channel")]
             )
         )
-        v = self.controller[self.config.values.get("laser", "laser1_diode_current_controller")].actualvalue[self.config.values.get("laser", "laser1_diode_current_port")][
-            self.config.values.getint("laser", "laser1_diode_current_channel")
-        ]
+        v = self.controller[self.config.values.get("laser", "laser1_diode_current_controller")].actualvalue[
+            self.config.values.get("laser", "laser1_diode_current_port")
+        ][self.config.values.getint("laser", "laser1_diode_current_channel")]
         i = v / float(self.config.values.get("laser", "R"))  # I = U / R
         if i < float(self.config.values.get("laser", "I_offset")):
             p = 0.0
         else:
-            p = 1000.0 * (i - float(self.config.values.get("laser", "I_offset"))) * float(self.config.values.get("laser", "I_scale"))
+            p = (
+                1000.0
+                * (i - float(self.config.values.get("laser", "I_offset")))
+                * float(self.config.values.get("laser", "I_scale"))
+            )
         i = 1000.0 * i
         self.laser1_diode_current_val.set("%.2f mA" % i)
         self.laser1_diode_power_val.set("%.2f mW" % p)
         self.laser2_diode_voltage_val.set(
             "%.2f V"
             % (
-                self.controller[self.config.values.get("laser", "laser2_diode_voltage_controller")].actualvalue[self.config.values.get("laser", "laser2_diode_voltage_port")][
-                    self.config.values.getint("laser", "laser2_diode_voltage_channel")
-                ]
+                self.controller[self.config.values.get("laser", "laser2_diode_voltage_controller")].actualvalue[
+                    self.config.values.get("laser", "laser2_diode_voltage_port")
+                ][self.config.values.getint("laser", "laser2_diode_voltage_channel")]
             )
         )
-        v = self.controller[self.config.values.get("laser", "laser2_diode_current_controller")].actualvalue[self.config.values.get("laser", "laser2_diode_current_port")][
-            self.config.values.getint("laser", "laser2_diode_current_channel")
-        ]
+        v = self.controller[self.config.values.get("laser", "laser2_diode_current_controller")].actualvalue[
+            self.config.values.get("laser", "laser2_diode_current_port")
+        ][self.config.values.getint("laser", "laser2_diode_current_channel")]
         i = v / float(self.config.values.get("laser", "R"))  # I = U / R
         if i < float(self.config.values.get("laser", "I_offset")):
             p = 0.0
         else:
-            p = 1000.0 * (i - float(self.config.values.get("laser", "I_offset"))) * float(self.config.values.get("laser", "I_scale"))
+            p = (
+                1000.0
+                * (i - float(self.config.values.get("laser", "I_offset")))
+                * float(self.config.values.get("laser", "I_scale"))
+            )
         i = 1000.0 * i
         self.laser2_diode_current_val.set("%.2f mA" % i)
         self.laser2_diode_power_val.set("%.2f mW" % p)
 
     def check_buttons(self):
-        if self.controller["dc"].isconnect:
+        if self.controller["dc"].connected:
             self.laser_checkbutton.configure(state=tkinter.NORMAL)
             for d in self.dispensoren:
                 if self.dispensers[d]["exists"]:
@@ -415,7 +507,7 @@ class diagnostic_particles:
                     self.dispensers[d]["gui"]["shakes_entry"].configure(state=tkinter.DISABLED)
                     self.dispensers[d]["gui"]["Ton_entry"].configure(state=tkinter.DISABLED)
                     self.dispensers[d]["gui"]["Toff_entry"].configure(state=tkinter.DISABLED)
-        if self.controller["mpc"].isconnect:
+        if self.controller["mpc"].connected:
             self.laser1_checkbutton.configure(state=tkinter.NORMAL)
             self.laser1_set_diode_voltage_entry.configure(state=tkinter.NORMAL)
             self.laser1_set_diode_voltage_button.configure(state=tkinter.NORMAL)

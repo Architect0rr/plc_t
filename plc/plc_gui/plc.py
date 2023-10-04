@@ -412,10 +412,7 @@ class PLC(tkinter.Frame):
         # self.gas_system_window.pack()
         self.gas_system_window.grid(column=1, row=0)
         self.gas_system = gas_system.gas_system(
-            config=self.configs,
-            pw=self.gas_system_window,
-            _log=self.log.getChild("GS"),
-            controller=self.controller
+            config=self.configs, pw=self.gas_system_window, _log=self.log.getChild("GS"), controller=self.controller
         )
 
         # create block for RF-generator
@@ -440,22 +437,22 @@ class PLC(tkinter.Frame):
         )
         # create block for electrode motion
         if self.electrode_motion_controller_device != "-1":
-            self.electrode_motion_window = tkinter.LabelFrame(self.control_window, text="Electrode Motion")
+            self.electrode_motion_window = ttk.LabelFrame(self.control_window, text="Electrode Motion")
             self.electrode_motion_window.pack()
             self.electrode_motion = electrode_motion.electrode_motion(
                 config=self.configs,
                 pw=self.electrode_motion_window,
-                debugprint=self.debugprint,
+                _log=self.log.getChild("emc"),
                 controller=self.controller,
             )
         # create block for translation stage
         if self.translation_stage_device != "-1":
-            self.translation_stage_window = tkinter.LabelFrame(self.control_window, text="Translation Stage")
+            self.translation_stage_window = ttk.LabelFrame(self.control_window, text="Translation Stage")
             self.translation_stage_window.pack()
             self.translation_stage = translation_stage.translation_stage(
                 config=self.configs,
                 pw=self.translation_stage_window,
-                debugprint=self.debugprint,
+                _log=self.log.getChild("tr_stage"),
                 controller=self.controller,
             )
 
