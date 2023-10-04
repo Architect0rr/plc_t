@@ -122,7 +122,7 @@ class rf_generator_gui:
         self.pattern_pattern_entry_val.set(" - no pattern - ")
         self.pattern_length_frame = tkinter.LabelFrame(self.pattern_frame, text="intervall length (us)")
         self.pattern_length_frame.pack()
-        self.pattern_length_button = dict()
+        self.pattern_length_button = {}
         self.pattern_length_button["- 100"] = tkinter.Button(
             self.pattern_length_frame, text="-100", command=self.pattern_length_cmd_down
         )
@@ -407,7 +407,8 @@ class rf_generator_gui:
             self.rfgc.setpoint["pattern_length"] = self.pattern["pattern_length"]
             self.rfgc.setpoint["pattern_intervall_length"] = self.pattern["pattern_intervall_length"]
             self.rfgc.setpoint["pattern"] = self.pattern["pattern"]
-            self.rfgc.setpoint["write_pattern"] = True
+            self.rfgc.write_pattern()
+            # self.rfgc.setpoint["write_pattern"] = True
         else:
             self.log.warning("cannot write pattern; do not understand setting")
 
@@ -433,13 +434,15 @@ class rf_generator_gui:
                 self.rfgc.setpoint["pattern_length"] = self.pattern["pattern_length"]
                 self.rfgc.setpoint["pattern_intervall_length"] = self.pattern["pattern_intervall_length"]
                 self.rfgc.setpoint["pattern"] = self.pattern["pattern"]
-                self.rfgc.setpoint["run_pattern"] = True
+                self.rfgc.run_pattern()
+                # self.rfgc.setpoint["run_pattern"] = True
             else:
                 self.log.warning("cannot initiate pattern run; do not understand setting")
         else:
             # stop running pattern
             self.log.info("initiate stop pattern run")
-            self.rfgc.setpoint["run_pattern"] = False
+            self.rfgc.unrun_pattern()
+            # self.rfgc.setpoint["run_pattern"] = False
 
     def pwr_on(self):
         # Power On
@@ -485,7 +488,7 @@ class rf_generator_gui:
                     current = max(
                         0,
                         min(
-                            self.rfgc.generator[g].actualvalue_channel[i].current + a,
+                            self.rfgc.generator[g].channel[i].current + a,
                             self.maxcurrent,
                         ),
                     )
@@ -493,9 +496,10 @@ class rf_generator_gui:
 
     def ignite_plasma(self):
         # ignite plasma
-        for g in range(3):
-            if self.rfgc.generator[g].exists:
-                self.rfgc.generator[g].setpoint_ignite_plasma = True
+        self.rfgc.ignite()
+        # for g in range(3):
+        #     if self.rfgc.generator[g].exists:
+        #         self.rfgc.generator[g].setpoint_ignite_plasma = True
 
     # def power_0(self) -> None:
     #     self.power(0)

@@ -24,14 +24,16 @@
 class for one 'Euro_4x_RF-DC_and_RF-gen'-Generator
 """
 
-
+import time
 import logging
+from enum import Enum
+from dataclasses import dataclass
+from .read_config_file import read_config_file
+from typing import List, Dict, Annotated, Callable
+
 import serial
 import tkinter
 import tkinter.ttk
-from dataclasses import dataclass
-from .read_config_file import read_config_file
-from typing import Callable, List, Annotated, Dict
 
 
 @dataclass
@@ -53,16 +55,59 @@ s_bits: Dict[str, float] = {
 }
 
 
+class EVENTS(Enum):
+    ONOFF = 1
+    current = 2
+    phase = 3
+
+
 class class_channel:
     """
     class for one channel of the generator
     """
 
-    def __init__(self, cn: int) -> None:
-        self.onoff: bool = False  # True if on
+    def __init__(self, cn: int, hndlr: Callable[[EVENTS], None]) -> None:
+        self._onoff: bool = False  # True if on
+        self._hndlr = hndlr
         self.n = cn
-        self.current: Annotated[int, ValueRange(0, 4095)] = 0  # 0 <= current <= 4095
-        self.phase: Annotated[int, ValueRange(0, 255)] = 0  # 0 <= phase <= 255
+        self._current: Annotated[int, ValueRange(0, 4095)] = 0  # 0 <= current <= 4095
+        self._phase: Annotated[int, ValueRange(0, 255)] = 0  # 0 <= phase <= 255'
+
+    def _onoff_write(self) -> None:
+        self._hndlr(EVENTS.ONOFF)
+
+    @property
+    def onoff(self) -> bool:
+        return self._onoff
+
+    @onoff.setter
+    def onoff(self, value: bool) -> None:
+        self._onoff = value
+        self._onoff_write()
+
+    def _current_write(self) -> None:
+        self._hndlr(EVENTS.current)
+
+    @property
+    def current(self) -> int:
+        return self._current
+
+    @current.setter
+    def current(self, value: int) -> None:
+        self._current = value
+        self._current_write()
+
+    def _phase_write(self) -> None:
+        self._hndlr(EVENTS.phase)
+
+    @property
+    def phase(self) -> int:
+        return self._phase
+
+    @phase.setter
+    def phase(self, value: int) -> None:
+        self._phase = value
+        self._phase_write()
 
 
 class cc_gui(tkinter.ttk.Frame):
@@ -75,7 +120,7 @@ class cc_gui(tkinter.ttk.Frame):
         self.onoff_status_checkbutton: tkinter.Checkbutton = tkinter.Checkbutton(
             self,
             text=f"Pwr Channel {backend.n}",
-            command=lambda: None,  # must refer to rf_generator.rf_channel_onoff_cmd
+            command=self.onoff,
             variable=self.onoff_status,
             state=tkinter.DISABLED,
         )
@@ -112,6 +157,9 @@ class cc_gui(tkinter.ttk.Frame):
         )
         self.choose_checkbutton.grid(column=6, row=backend.n)
         self.choose_checkbutton.select()
+
+    def onoff(self) -> None:
+        self.backend.onoff = not self.backend.onoff
 
     def pwr_on(self) -> bool:
         if self.choose.get() == 1:
@@ -184,23 +232,20 @@ class class_rf_generator:
             self.power_port: str = config.values.get(f"RF-Generator {number + 1}", "power_port")
             self.power_channel: str = config.values.get(f"RF-Generator {number + 1}", "power_channel")
 
-            self.setpoint_rf_onoff: bool = False
-            self.setpoint_ignite_plasma: bool = False
-
             self.channel: List[class_channel] = []
             for i in range(4):
-                self.channel.append(class_channel(self.number * 4 + i))
-            self.setpoint_channel: List[class_channel] = []
-            for i in range(4):
-                self.setpoint_channel.append(class_channel(self.number * 4 + i))
-            self.actualvalue_channel: List[class_channel] = []
-            for i in range(4):
-                self.actualvalue_channel.append(class_channel(self.number * 4 + i))
-                self.actualvalue_channel[i].current = 0
-                self.actualvalue_channel[i].phase = 0
+                self.channel.append(class_channel(self.number * 4 + i, self.channel_handler))
+            # self.setpoint_channel: List[class_channel] = []
+            # for i in range(4):
+            #     self.setpoint_channel.append(class_channel(self.number * 4 + i, self.channel_handler))
+            # self.actualvalue_channel: List[class_channel] = []
+            # for i in range(4):
+            #     self.actualvalue_channel.append(class_channel(self.number * 4 + i, self.channel_handler))
 
+            self.setpoint_rf_onoff: bool = False
+            self.actualvalue_rf_onoff: bool = False
+            # self.setpoint_ignite_plasma: bool = False
             self.actualvalue_pattern: str = ""
-            self.actualvalue_rf_onoff = None
             self.device = None
             self.rf_onoff = None
             self.update_intervall = config.values.getfloat(f"RF-Generator {number + 1}", "update_intervall")
@@ -213,6 +258,7 @@ class class_rf_generator:
             self.readtimeout: float = config.values.getfloat(f"RF-Generator {number + 1}", "readtimeout")
             self.writetimeout: float = config.values.getfloat(f"RF-Generator {number + 1}", "writetimeout")
             # return
+            self.readbytes = 4096
             self.dev_gen = serial.Serial(
                 port=self.gen_device,
                 baudrate=self.boudrate,
@@ -231,6 +277,89 @@ class class_rf_generator:
                 timeout=self.readtimeout,
                 write_timeout=self.writetimeout,
             )
+
+    def read_gen(self) -> None:
+        self.log.info(f"From rf-gen {self.number}: {self.dev_gen.read(self.readbytes).decode('utf-8')}")
+
+    def read_dc(self) -> None:
+        self.log.info(f"From rf-dc {self.number}: {self.dev_dc.read(self.readbytes).decode('utf-8')}")
+
+    def send_maxcurrent_tmp(self, maxcurrent_tmp: int) -> None:
+        # set maxcurrent_tmp
+        c: List[str] = []
+        for i in range(4):
+            c.append(hex(maxcurrent_tmp)[2:].upper())
+            while len(c[i]) < 4:
+                c[i] = f"0{c[i]}"
+            c[i] = f"{c[i][2:4]}{c[i][0:2]}"
+        si = f"#D{c[2]}{c[3]}{c[0]}{c[1]}"
+
+        self.log.info(f"To rf-dc {self.number}: {si}")
+        self.dev_dc.write(si.encode("urf-8"))
+
+    def send_maxcurrent(self, maxcurrent: int) -> None:
+        # set maxcurrent
+        c: List[str] = []
+        for i in range(4):
+            c.append(hex(maxcurrent)[2:].upper())
+            while len(c[i]) < 4:
+                c[i] = f"0{c[i]}"
+            c[i] = f"{c[i][2:4]}{c[i][0:2]}"
+        si = f"#D{c[2]}{c[3]}{c[0]}{c[1]}"
+
+        self.log.info(f"To rf-dc {self.number}: {si}")
+        self.dev_dc.write(si.encode("utf-8"))
+
+    def change_power(self, maxcurrent: int) -> None:
+        # max. normal power -> user defined power
+        nsteps = 10
+        for step in range(nsteps):
+            c: List[str] = []
+            for i in range(4):
+                a = self.channel[i].current
+                b = maxcurrent
+                ac = int(a + (1.0 - (float(step) / float(nsteps))) * (b - a))
+                self.log.debug("set pwr to %d" % ac)
+                c.append(hex(ac)[2:].upper())
+                while len(c[i]) < 4:
+                    c[i] = f"0{c[i]}"
+                c[i] = f"{c[i][2:4]}{c[i][0:2]}"
+            si = f"#D{c[2]}{c[3]}{c[0]}{c[1]}"
+            self.log.info(f"To rf-dc {self.number}: {si}")
+            self.dev_dc.write(si.encode("utf-8"))
+
+    def ignition(self, maxcurrent: int, maxcurrent_tmp: int) -> None:
+        s = "@D"
+        self.log.info(f"To rf-gen {self.number}: {s}")
+        self.dev_gen.write(s.encode("utf-8"))
+
+        self.send_maxcurrent_tmp(maxcurrent_tmp)
+        time.sleep(0.01)
+
+        if self.actualvalue_rf_onoff:
+            s = "@E"
+            self.log.info(f"To rf-gen {self.number}: {s}")
+            self.dev_gen.write(s.encode("utf-8"))
+        time.sleep(0.1)
+
+        self.send_maxcurrent(maxcurrent)
+        time.sleep(1)
+
+        self.send_maxcurrent_tmp(maxcurrent_tmp)
+        time.sleep(0.1)
+
+        self.change_power(maxcurrent)
+        time.sleep(0.1)
+
+        c: List[str] = []
+        for i in range(4):
+            c.append(hex(self.channel[i].current)[2:].upper())
+            while len(c[i]) < 4:
+                c[i] = f"0{c[i]}"
+            c[i] = f"{c[i][2:4]}{c[i][0:2]}"
+        s = f"#D{c[2]}{c[3]}{c[0]}{c[1]}"
+        self.log.info(f"To rf-dc {self.number}: {s}")
+        self.dev_dc.write(s.encode("utf-8"))
 
     def open_serial(self):
         if not self.exists:
@@ -256,6 +385,65 @@ class class_rf_generator:
             self.channel[i].phase = 0
         self.rf_onoff = False
 
+    def __write_gen(self, data: str):
+        self.log.info(f"To rf-gen №{self.number}: {data}")
+        self.dev_gen.write(data.encode("utf-8"))
+
+    def __write_dc(self, data: str):
+        self.log.info(f"To rf-dc №{self.number}: {data}")
+        self.dev_dc.write(data.encode("utf-8"))
+
+    def __onoff_action(self) -> None:
+        onoff: int = 0  # all off
+        for i in range(4):
+            if self.channel[i].onoff:
+                onoff = onoff + 2 ** (3 - i)
+        onoff_s = hex(onoff)
+        onoff_s = "0%s" % onoff_s[2].upper()
+        w2gen = f"@X{onoff_s}"
+        self.__write_gen(w2gen)
+
+    def __current_action(self) -> None:
+        c: List[str] = []
+        for i in range(4):
+            c.append(hex(self.channel[i].current)[2:].upper())
+            while len(c[i]) < 4:
+                c[i] = f"0{c[i]}"
+            c[i] = f"{c[i][2:4]}{c[i][0:2]}"
+        w2dc = f"#O#D{c[2]}{c[3]}{c[0]}{c[1]}"
+        self.__write_dc(w2dc)
+
+    def __phase_action(self) -> None:
+        p: List[str] = []
+        for i in range(4):
+            p.append(hex(self.channel[i].phase)[2:].upper())
+            while len(p[i]) < 2:
+                p[i] = f"0{p[i]}"
+            p[i] = f"{p[i][2:4]}{p[i][0:2]}"
+        w2gen = f"@P{p[0]}{p[1]}{p[2]}{p[3]}"
+        self.__write_gen(w2gen)
+
+    def channel_handler(self, event: EVENTS):
+        if event == EVENTS.ONOFF:
+            self.__onoff_action()
+        elif event == EVENTS.current:
+            self.__current_action()
+        elif event == EVENTS.phase:
+            self.__phase_action()
+
+    def update(self) -> None:
+        if self.setpoint_rf_onoff != self.actualvalue_rf_onoff:
+            self.actualvalue_rf_onoff = self.setpoint_rf_onoff
+            w2gen = ""
+            # rf_onoff
+            # enable/disable 13 MHz
+            if self.actualvalue_rf_onoff:
+                w2gen = f"{w2gen}@E"
+            else:
+                w2gen = f"{w2gen}@D"
+            self.log.info(f"To rf-gen {self.number}: {w2gen}")
+            self.dev_gen.write(w2gen.encode("utf-8"))
+
 
 class rfg_gui(tkinter.ttk.LabelFrame):
     def __init__(self, _root: tkinter.ttk.LabelFrame, _backend: class_rf_generator, _log: logging.Logger) -> None:
@@ -277,38 +465,38 @@ class rfg_gui(tkinter.ttk.LabelFrame):
             self.channels: List[cc_gui] = [cc_gui(self.channels_frame, _backend) for _backend in self.backend.channel]
             [c.pack() for c in self.channels]
 
-            self.setpoint_channels_frame = tkinter.ttk.LabelFrame(self, text="Setpoint channels")
-            self.setpoint_channels_frame.pack()
-            self.setpoint_channels: List[cc_gui] = [
-                cc_gui(self.setpoint_channels_frame, _backend) for _backend in self.backend.setpoint_channel
-            ]
-            [c.pack() for c in self.setpoint_channels]
+            # self.setpoint_channels_frame = tkinter.ttk.LabelFrame(self, text="Setpoint channels")
+            # self.setpoint_channels_frame.pack()
+            # self.setpoint_channels: List[cc_gui] = [
+            #     cc_gui(self.setpoint_channels_frame, _backend) for _backend in self.backend.setpoint_channel
+            # ]
+            # [c.pack() for c in self.setpoint_channels]
 
-            self.actualvalue_channels_frame = tkinter.ttk.LabelFrame(self, text="AV channels")
-            self.actualvalue_channels_frame.pack()
-            self.actualvalue_channels: List[cc_gui] = [
-                cc_gui(self.actualvalue_channels_frame, _backend) for _backend in self.backend.actualvalue_channel
-            ]
-            [c.pack() for c in self.actualvalue_channels]
+            # self.actualvalue_channels_frame = tkinter.ttk.LabelFrame(self, text="AV channels")
+            # self.actualvalue_channels_frame.pack()
+            # self.actualvalue_channels: List[cc_gui] = [
+            #     cc_gui(self.actualvalue_channels_frame, _backend) for _backend in self.backend.actualvalue_channel
+            # ]
+            # [c.pack() for c in self.actualvalue_channels]
 
     def power(self):
         s = self.power_status.get() != 0
         self.log.error("Not implemented")
-        # self.controller[self.generator[g].power_controller].setpoint[
-        #         self.generator[g].power_port
-        #     ][int(self.generator[g].power_channel)] = s
+        # self.controller[self.power_controller].setpoint[
+        #         self.power_port
+        #     ][int(self.power_channel)] = s
 
     def pwr_on(self):
         for i, chan in enumerate(self.channels):
             if chan.pwr_on():
-                self.setpoint_channels[i].pwr_on()
+                self.channels[i].pwr_on()
 
     def pwr_off(self):
         for i, chan in enumerate(self.channels):
             if chan.pwr_off():
-                self.setpoint_channels[i].pwr_off()
+                self.channels[i].pwr_off()
 
     def sc(self, current):
         for i, chan in enumerate(self.channels):
             if chan.sc(current):
-                self.setpoint_channels[i].sc(current)
+                self.channels[i].sc(current)
