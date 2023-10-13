@@ -27,11 +27,12 @@ class for digital controller (red box)
 import logging
 from typing import List, Dict, Any
 
-from .read_config_file import read_config_file
 from . import plcclientserverclass
+from .read_config_file import read_config_file
+from .controller import controller
 
 
-class digital_controller(plcclientserverclass.socket_communication_class):
+class digital_controller(plcclientserverclass.socket_communication_class, controller):
     """
     class for digital controller (red box)
     """

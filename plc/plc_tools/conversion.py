@@ -19,7 +19,7 @@ def i2b(i):
         return False
 
 
-def b2onoff(b):
+def b2onoff(b: bool):
     if b:
         return "ON"
     else:

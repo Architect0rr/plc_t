@@ -14,9 +14,10 @@ from typing import Dict, List, Any
 
 from .class_rf_generator import class_rf_generator
 from .read_config_file import read_config_file
+from .controller import controller
 
 
-class rf_generator_controller:
+class rf_generator_controller(controller):
     """class for rf-generator controller (trinamix_tmcm_351)
 
     Author: Daniel Mohr

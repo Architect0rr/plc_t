@@ -11,16 +11,19 @@ import time
 from typing import Callable, List, Dict, Union
 
 from . import read_config_file
+from .controller import controller
 
 
-class translation_stage_controller:
+class translation_stage_controller(controller):
     """class for translation stage controller (trinamix_tmcm_351)
 
     Author: Daniel Mohr
     Date: 2012-08-27
     """
 
-    def __init__(self, config: read_config_file.read_config_file, pw: tkinter.LabelFrame, debugprint: Callable[[str], None]) -> None:
+    def __init__(
+        self, config: read_config_file.read_config_file, pw: tkinter.LabelFrame, debugprint: Callable[[str], None]
+    ) -> None:
         # def __init__(self, config=None, pw=None, debugprint=None):
         self.readbytes = 4096  # read this number of bytes at a time
         self.readbytes = 16384  # read this number of bytes at a time
@@ -46,7 +49,13 @@ class translation_stage_controller:
         self.readtimeout = float(self.config.values.get("translation stage controller", "readtimeout"))
         self.writetimeout = int(self.config.values.get("translation stage controller", "writetimeout"))
         self.device = serial.Serial(
-            port=None, baudrate=self.boudrate, bytesize=self.databits, parity=self.parity, stopbits=self.stopbits, timeout=self.readtimeout, write_timeout=self.writetimeout
+            port=None,
+            baudrate=self.boudrate,
+            bytesize=self.databits,
+            parity=self.parity,
+            stopbits=self.stopbits,
+            timeout=self.readtimeout,
+            write_timeout=self.writetimeout,
         )
         self.device.port = self.devicename
         self.update_intervall = int(self.config.values.get("translation stage controller", "update_intervall"))
@@ -136,13 +145,19 @@ class translation_stage_controller:
         if restart and selfrestart and self.isgui:
             if self.updateid:
                 self.start_button.after_cancel(self.updateid)
-            self.updateid = self.start_button.after(self.update_intervall, func=self.update)  # call after ... milliseconds
+            self.updateid = self.start_button.after(
+                self.update_intervall, func=self.update
+            )  # call after ... milliseconds
 
     def gui(self):
         self.isgui = True
-        self.start_button = tkinter.Button(self.pw, text="open", command=self.start_request, padx=self.padx, pady=self.pady)
+        self.start_button = tkinter.Button(
+            self.pw, text="open", command=self.start_request, padx=self.padx, pady=self.pady
+        )
         self.start_button.grid(row=0, column=0)
-        self.stop_button = tkinter.Button(self.pw, text="close", command=self.stop_request, state=tkinter.DISABLED, padx=self.padx, pady=self.pady)
+        self.stop_button = tkinter.Button(
+            self.pw, text="close", command=self.stop_request, state=tkinter.DISABLED, padx=self.padx, pady=self.pady
+        )
         self.stop_button.grid(row=0, column=1)
         self.set_default_values()
 

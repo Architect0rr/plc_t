@@ -10,16 +10,19 @@ import time
 from typing import Callable, List, Dict
 
 from . import read_config_file
+from .controller import controller
 
 
-class electrode_motion_controller:
+class electrode_motion_controller(controller):
     """class for electrode motion controller (zpos)
 
     Author: Daniel Mohr
     Date: 2012-08-27
     """
 
-    def __init__(self, config: read_config_file.read_config_file, pw: tkinter.LabelFrame, debugprint: Callable[[str], None]) -> None:
+    def __init__(
+        self, config: read_config_file.read_config_file, pw: tkinter.LabelFrame, debugprint: Callable[[str], None]
+    ) -> None:
         # def __init__(self, config=None, pw=None, debugprint=None):
         self.readbytes = 4096  # read this number of bytes at a time
         self.readbytes = 16384  # read this number of bytes at a time
@@ -45,7 +48,13 @@ class electrode_motion_controller:
         self.readtimeout = float(self.config.values.get("electrode motion controller", "readtimeout"))
         self.writetimeout = float(self.config.values.get("electrode motion controller", "writetimeout"))
         self.device = serial.Serial(
-            port=None, baudrate=self.boudrate, bytesize=self.databits, parity=self.parity, stopbits=self.stopbits, timeout=self.readtimeout, write_timeout=self.writetimeout
+            port=None,
+            baudrate=self.boudrate,
+            bytesize=self.databits,
+            parity=self.parity,
+            stopbits=self.stopbits,
+            timeout=self.readtimeout,
+            write_timeout=self.writetimeout,
         )
         self.device.port = self.devicename
         self.T_off = int(self.config.values.get("electrode motion controller", "T_off"))
@@ -185,9 +194,13 @@ class electrode_motion_controller:
 
     def gui(self):
         self.isgui = True
-        self.start_button = tkinter.Button(self.pw, text="open", command=self.start_request, padx=self.padx, pady=self.pady)
+        self.start_button = tkinter.Button(
+            self.pw, text="open", command=self.start_request, padx=self.padx, pady=self.pady
+        )
         self.start_button.grid(row=0, column=0)
-        self.stop_button = tkinter.Button(self.pw, text="close", command=self.stop_request, state=tkinter.DISABLED, padx=self.padx, pady=self.pady)
+        self.stop_button = tkinter.Button(
+            self.pw, text="close", command=self.stop_request, state=tkinter.DISABLED, padx=self.padx, pady=self.pady
+        )
         self.stop_button.grid(row=0, column=1)
         self.set_default_values()
 

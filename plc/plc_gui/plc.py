@@ -34,7 +34,7 @@ import configparser
 from pathlib import Path
 from typing import Dict, Any, List, NoReturn
 
-import PIL.ImageTk
+import PIL.ImageTk  # type: ignore
 
 import tkinter
 import tkinter.messagebox
@@ -50,11 +50,10 @@ from . import electrode_motion
 from . import translation_stage
 from . import acceleration_sensor
 from . import diagnostic_particles
+from .plcclientserverclass import scs_gui
+from ..plc_tools import plclogclasses
 
 # from .misc import except_notify
-from .plcclientserverclass import scs_gui
-
-from ..plc_tools import plclogclasses
 
 
 class PLC(tkinter.Frame):
@@ -357,7 +356,7 @@ class PLC(tkinter.Frame):
         self.controller_window.grid(column=0, row=0)
 
         # controller in a dict
-        self.controller: Dict[str, Any] = dict()
+        self.controller: Dict[str, controller.controller] = {}
 
         self.digital_controller_window = tkinter.LabelFrame(self.controller_window, text="digital", labelanchor="n")
         self.digital_controller_window.grid(column=0, row=0)
@@ -411,10 +410,12 @@ class PLC(tkinter.Frame):
 
         # create block for gas system
         self.gas_system_window = ttk.LabelFrame(self.control_window1, text="Gas System")
-        # self.gas_system_window.pack()
         self.gas_system_window.grid(column=1, row=0)
-        self.gas_system = gas_system.gas_system(
-            config=self.configs, pw=self.gas_system_window, _log=self.log.getChild("GS"), controller=self.controller
+        self.gas_system = gas_system.gs(self.configs, self.log.getChild("GS"), self.controller)
+        self.gs_gui = gas_system.gas_system(
+            self.gas_system_window,
+            self.gas_system,
+            self.log.getChild("GS"),
         )
 
         # create block for RF-generator
@@ -581,21 +582,21 @@ class PLC(tkinter.Frame):
                 except Exception:
                     pass
         try:
-            self.controller["dc"].stop()
+            self.controller["dc"].stop_request()
         except Exception:
             pass
         try:
-            self.controller["mpc"].stop()
+            self.controller["mpc"].stop_request()
         except Exception:
             pass
         if self.electrode_motion_controller_device != "-1":
             try:
-                self.controller["emc"].stop()
+                self.controller["emc"].stop_request()
             except Exception:
                 pass
         if self.translation_stage_device != "-1":
             try:
-                self.controller["tsc"].stop()
+                self.controller["tsc"].stop_request()
             except Exception:
                 pass
         time.sleep(0.6)
@@ -906,7 +907,7 @@ class PLC(tkinter.Frame):
                 self.gas_system.mass_flow()
             if self.setpoints.has_option(s, "mass_flow"):
                 self.gas_system.mass_flow_set_flow_rate_val.set(self.setpoints.get(s, "mass_flow"))
-                self.gas_system.mass_flow_set_flow_rate_command()
+                self.gas_system.set_mass_flow_rate()
             # RF
             # setcurrents = False
             # setphases = False
