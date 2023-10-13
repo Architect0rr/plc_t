@@ -32,7 +32,6 @@ import time
 import tkinter
 from typing import List
 import tkinter.ttk
-from enum import Enum
 from abc import abstractmethod
 import shlex
 
@@ -92,7 +91,7 @@ class socket_communication_class(plc_socket_communication.tools_for_socket_commu
         self.get_actualvalues_lock.acquire()  # lock
         if self.connected:
             try:
-                self.send_data_to_socket(self.socket, "getact")
+                self.send_data_to_socket(self.socket, b"getact")
                 self.actualvalue = self.receive_data_from_socket(self.socket, self.bufsize)
             except Exception:
                 self.log.error("Could not get actualvalues from server!")
@@ -100,13 +99,16 @@ class socket_communication_class(plc_socket_communication.tools_for_socket_commu
 
     def socket_communication_with_server(self) -> None:
         self.socketlock.acquire()  # lock
-        if self.socket is not None:
+        if self.connected:
             if self.setpoint is not None:
                 # set self.setpoint
+                ts = bytearray(b"p ")
+                ts.extend(self.create_send_format(self.setpoint))
                 if self.trigger_out:
-                    self.send_data_to_socket(self.socket, "p %s!w2d" % self.create_send_format(self.setpoint))
+                    ts.extend(b"!w2d")
+                    self.send_data_to_socket(self.socket, bytes(ts))
                 else:
-                    self.send_data_to_socket(self.socket, "p %s" % self.create_send_format(self.setpoint))
+                    self.send_data_to_socket(self.socket, bytes(ts))
                 self.myextra_socket_communication_with_server()
             # read self.actualvalue
             self.get_actualvalues()
@@ -144,12 +146,25 @@ class socket_communication_class(plc_socket_communication.tools_for_socket_commu
             c: List[str] = [self.cmd]
             if self.dev != "-1":
                 c += ["-device", self.dev]
-            if self.serialnumber != "-1":
-                # acceleration sensor
-                c += ["-SerialNumber", self.serialnumber]
-                c += ["-datalogformat", f"{self.datalogformat}"]
-                c += ["-maxg", f"{self.maxg}"]
-            c += ["-logfile", self.logfile, "-datalogfile", self.datalogfile, "-runfile", self.rf, "-ip", self.ip, "-port", "%s" % self.sport]
+            # if self.serialnumber != "-1":
+            #     # acceleration sensor
+            #     c += ["-SerialNumber", self.serialnumber]
+            #     c += ["-datalogformat", f"{self.datalogformat}"]
+            #     c += ["-maxg", f"{self.maxg}"]
+            c += [
+                "-logfile",
+                self.logfile,
+                "-datalogfile",
+                self.datalogfile,
+                "-runfile",
+                self.rf,
+                "-ip",
+                self.ip,
+                "-port",
+                "%s" % self.sport,
+                "-debug",
+                "1",
+            ]
             if self.st != "-1":
                 c += ["-timedelay", "%s" % self.st]
             self.log.debug(f"Executing '{shlex.join(c)}'")
@@ -209,9 +224,6 @@ class socket_communication_class(plc_socket_communication.tools_for_socket_commu
 
     def stop_request(self) -> None:
         self.log.debug("Controller stop requested")
-        # if self.isgui:
-        #     self.stop_button.after(1, self.stop)
-        # else:
         self.log.debug("Starting stop thread")
         starttimer = threading.Thread(target=self.stop)
         starttimer.daemon = True
@@ -237,36 +249,24 @@ class socket_communication_class(plc_socket_communication.tools_for_socket_commu
         self.log.debug("Stopped.")
         self.lock.release()  # release the lock
 
-    # def correct_state_intern(self):
-    #     if self.isgui:
-    #         if self.socket != None:
-    #             self.start_button.configure(state=tkinter.DISABLED)
-    #             self.stop_button.configure(state=tkinter.NORMAL)
-    #         else:
-    #             self.start_button.configure(state=tkinter.NORMAL)
-    #             self.stop_button.configure(state=tkinter.DISABLED)
-
-
-# class BS(Enum):
-#     OFF = 0
-#     IDLE = 1
-#     ERROR = 2
-#     WARNING = 3
-#     PROGRESS = 4
-
-
-# s2ud: Dict[BS, str] = {BS.OFF: "\U000026AA", BS.IDLE: "\U0001F7E2", BS.ERROR: "\U0001F534", BS.WARNING: "\U0001F7E1", BS.PROGRESS: "\U0001F535"}
-
 
 class scs_gui(tkinter.ttk.Frame):
     def __init__(self, _root: tkinter.LabelFrame, backend: socket_communication_class) -> None:
         super().__init__(_root)
         self.root = _root
-        self.start_button = tkinter.Button(self.root, text="Start", command=backend.start_request)
-        self.stop_button = tkinter.Button(self.root, text="Stop", command=backend.stop_request, state=tkinter.DISABLED)
+        self.backend = backend
+        self.start_button = tkinter.Button(self.root, text="Start", command=self.start)
+        self.stop_button = tkinter.Button(self.root, text="Stop", command=self.stop, state=tkinter.DISABLED)
         self.start_button.grid(row=0, column=0)
         self.stop_button.grid(row=0, column=1)
-        # self.backend_state: BS = BS.PROGRESS
-        # self.state_label = tkinter.Label(self.root, text=s2ud[self.backend_state])
-        # self.state_label.grid(row=1, column=0)
         backend.set_default_values()
+
+    def start(self) -> None:
+        self.start_button.configure(state=tkinter.DISABLED)
+        self.stop_button.configure(state=tkinter.NORMAL)
+        self.backend.start_request()
+
+    def stop(self) -> None:
+        self.stop_button.configure(state=tkinter.DISABLED)
+        self.start_button.configure(state=tkinter.NORMAL)
+        self.backend.stop_request()

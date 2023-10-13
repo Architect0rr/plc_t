@@ -7,7 +7,8 @@ name = "PLCr"
 version = "1.0.1"
 authors = [
     { name = "Egor Perevoshchikov", email = "abkein@abkein.ru" },
-    { name = "Daniel Mohr", email = "mohr@mpe.mpg.de, daniel.mohr@dlr.de" },
+    { name = "Daniel Mohr", email = "daniel.mohr@dlr.de" },
+    { name = "Daniel Mohr", email = "mohr@mpe.mpg.de" },
 ]
 description = "PlasmaLabControl is a software for controlling the experiment. This is a reborn in Python3."
 readme = "README.md"
@@ -43,47 +44,48 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Visualization",
     "Topic :: System :: Hardware :: Hardware Drivers",
 ]
-dependencies = [
-    'ConfigParser',
-    'cPickle',
-    'cStringIO',
-    'distutils.core',
-    'errno',
-    'importlib',
-    'logging',
-    'logging.handlers',
-    'math',
-    'matplotlib',
-    'matplotlib.pyplot',
-    'numpy',
-    'os.path',
-    'PIL.ImageOps',
-    'PIL.Image',
-    'PIL.ImageDraw',
-    'PIL.ImageEnhance',
-    'PIL.ImageMath',
-    'PIL.ImageTk',
-    'pydc1394',
-    'Queue',
-    'serial',
-    'SimpleHTTPServer',
-    'SocketServer',
-    'StringIO',
-    'sys',
-    'time',
-    'tkFileDialog',
-    'Tkinter',
-    'tkMessageBox',
-    'ttk',
-    'unittest',
-    'usb',
-]
+# dependencies = [
+#     # 'ConfigParser',
+#     # 'cPickle',
+#     # 'cStringIO',
+#     # 'distutils.core',
+#     'errno',
+#     'importlib',
+#     'logging',
+#     'logging.handlers',
+#     'math',
+#     'matplotlib',
+#     'matplotlib.pyplot',
+#     'numpy',
+#     'os.path',
+#     'PIL.ImageOps',
+#     'PIL.Image',
+#     'PIL.ImageDraw',
+#     'PIL.ImageEnhance',
+#     'PIL.ImageMath',
+#     'PIL.ImageTk',
+#     'pydc1394',
+#     'Queue',
+#     'serial',
+#     'SimpleHTTPServer',
+#     'SocketServer',
+#     'StringIO',
+#     'sys',
+#     'time',
+#     'tkFileDialog',
+#     'Tkinter',
+#     'tkMessageBox',
+#     'ttk',
+#     'unittest',
+#     'usb',
+# ]
 
 # [project.optional-dependencies]
 # gui = ["PyQt5"]
 # cli = ["rich", "click"]
 
 [project.scripts]
+plc_dc_server = "plc.servers.digital_controller:main"
 
 [project.gui-scripts]
 plc = "plc.plc:main"

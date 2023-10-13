@@ -332,7 +332,7 @@ class class_rf_generator:
         si = f"#D{c[2]}{c[3]}{c[0]}{c[1]}"
 
         self.log.info(f"To rf-dc {self.number}: {si}")
-        self.dev_dc.write(si.encode("urf-8"))
+        self.dev_dc.write(si.encode("utf-8"))
 
     def send_maxcurrent(self, maxcurrent: int) -> None:
         # set maxcurrent

@@ -61,20 +61,11 @@ class electrode_motion_controller:
         self.setpoint["lower electrode"] = 0
         self.actualvalue = dict()
         self.actualvalue["connect"] = False
-        self.write = self.defaultprint
         # values for the gui
         self.isgui = False
         # self.start_button = None
         # self.stop_button = None
         self.updateid = None
-
-    # def debugprint(self, s):
-    #     if self.debug:
-    #         print(s)
-
-    def defaultprint(self, s) -> None:
-        if False:
-            print(s)
 
     def set_default_values(self) -> None:
         """set default values

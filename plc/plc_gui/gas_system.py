@@ -37,8 +37,6 @@ class gas_system:
         """
         self.log = _log
         self.config = config
-        # self.padx = self.config.values.get("gui", "padx")
-        # self.pady = self.config.values.get("gui", "pady")
         self.pw = pw
         self.controller = controller
         # create gui

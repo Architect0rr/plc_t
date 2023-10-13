@@ -111,7 +111,7 @@ class PLC(tkinter.Frame):
         self.screenx = self.main_window.winfo_screenwidth()
         self.screeny = self.main_window.winfo_screenheight()
         # self.main_window.title(f"plc - PlasmaLabControl ({self.conffile.as_posix()})")
-        self.main_window.title("plc - PlasmaLabControl (development 22282109)")
+        self.main_window.title("plc - PlasmaLabControl (development 22261104)")
 
         # ########################
         # ####### M E N U ########
@@ -374,6 +374,8 @@ class PLC(tkinter.Frame):
         self.controller["mpc"] = self.multi_purpose_controller
         self.controller["mpc"].set_default_values()
         scs_gui(self.multi_purpose_controller_window, self.multi_purpose_controller)
+
+        # ----------------------------
 
         # electrode motion controller
         self.electrode_motion_controller_device = self.configs.values.get("electrode motion controller", "devicename")

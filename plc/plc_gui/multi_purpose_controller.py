@@ -22,22 +22,6 @@ class multi_purpose_controller(plcclientserverclass.socket_communication_class):
         super().__init__(log, config, "mpc", bufsize)
 
         self.myservername = "multi_purpose_controller_server"
-        # self.log = logging.getLogger("plc.plc_gui.multi_purpose_controller")
-        # self.cmd = self.config.values.get("mpc", "server_command")
-        # self.start_server = self.config.values.getboolean("mpc", "start_server")
-        # self.logfile = self.config.values.get("mpc", "server_logfile")
-        # self.datalogfile = self.config.values.get("mpc", "server_datalogfile")
-        # self.dev = self.config.values.get("mpc", "server_device")
-        # self.rf = self.config.values.get("mpc", "server_runfile")
-        # self.ip = self.config.values.get("mpc", "server_ip")
-        # self.sport = self.config.values.getint("mpc", "server_port")
-        # self.server_max_start_time = self.config.values.getfloat("mpc", "server_max_start_time")
-        # self.st = self.config.values.getfloat("mpc", "server_timedelay")
-        # self.update_intervall = self.config.values.getint("mpc", "update_intervall") / 1000.0
-        # self.trigger_out = self.config.values.getboolean("mpc", "trigger_out")
-        # self.padx = self.config.values.get("gui", "padx")
-        # self.pady = self.config.values.get("gui", "pady")
-        # setpoint/actualvalue:
         self.actualvalue: Dict[str, Any] = {
             "DO": 4 * [None],
             "R": 2 * [None],
