@@ -126,8 +126,6 @@ class socket_communication_class(plc_socket_communication.tools_for_socket_commu
     @abstractmethod
     def actualvalue2setpoint(self):
         ...
-        # if self.actualvalue is not None and not isinstance(self.actualvalue, list):
-        #     self.setpoint = self.actualvalue.copy()
 
     def start_request(self) -> None:
         self.lock.acquire()  # lock

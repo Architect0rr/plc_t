@@ -86,6 +86,7 @@ classifiers = [
 
 [project.scripts]
 plc_dc_server = "plc.servers.digital_controller:main"
+plc_dc_client = "plc.clients.digital_controller:main"
 
 [project.gui-scripts]
 plc = "plc.plc:main"
