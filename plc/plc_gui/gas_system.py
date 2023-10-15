@@ -168,7 +168,7 @@ class gas_system(tkinter.ttk.LabelFrame):
 
     def __init__(
         self,
-        _root: tkinter.ttk.LabelFrame,
+        _root: tkinter.ttk.Frame,
         _backend: gs,
         _log: logging.Logger,
     ) -> None:
@@ -185,6 +185,7 @@ class gas_system(tkinter.ttk.LabelFrame):
         Author: Daniel Mohr
         Date: 2012-08-29
         """
+        super().__init__(master=_root, text="GAS SYS")
         self.backend = _backend
         self.root = _root
         # create gui
@@ -370,13 +371,3 @@ class gas_system(tkinter.ttk.LabelFrame):
     #         self.mass_flow_checkbutton.configure(state=tkinter.DISABLED)
     #         self.mass_flow_set_flow_rate_entry.configure(state=tkinter.DISABLED)
     #         self.mass_flow_set_flow_rate_button.configure(state=tkinter.DISABLED)
-
-
-class gas_gui(tkinter.ttk.LabelFrame):
-    def __init__(self, _root: tkinter.ttk.LabelFrame, _backend: gas_system, _log: logging.Logger) -> None:
-        super().__init__(_root, text="GAS sys")
-        self.backend = _backend
-        self.log = _log
-
-        # self.channels_frame = tkinter.ttk.LabelFrame(self, text="Channels")
-        # self.channels_frame.pack()

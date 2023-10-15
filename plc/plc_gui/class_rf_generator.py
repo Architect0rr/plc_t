@@ -197,11 +197,6 @@ class cc_gui(tkinter.ttk.Frame):
         return False
 
     def validate(self, _value, _widget) -> bool:
-        """
-        Validat the email entry
-        :param value:
-        :return:
-        """
         widget_name = _widget.split(".")[-1].strip()
         try:
             if widget_name == "current":
@@ -240,10 +235,6 @@ class cc_gui(tkinter.ttk.Frame):
             raise
 
     def on_invalid(self, widget):
-        """
-        Show the error message if the data is not valid
-        :return:
-        """
         if widget == "current":
             self.current_status_entry["backgroud"] = "red"
         elif widget == "phase":
@@ -557,7 +548,7 @@ class rfg_gui(tkinter.ttk.LabelFrame):
         self.log.debug("btn_power")
         s = self.power_status.get() != 0
         self.log.error("Not implemented")
-        except_notify.show(NotImplementedError("Method 'btn_power' not implemented yet"))
+        except_notify.show(NotImplementedError("Method 'btn_power' is not implemented yet"))
         # self.controller[self.power_controller].setpoint[
         #         self.power_port
         #     ][int(self.power_channel)] = s

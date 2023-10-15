@@ -9,7 +9,7 @@ from typing import Dict, List, Any
 
 from . import plcclientserverclass
 from .read_config_file import read_config_file
-from .controller import controller
+from .base_controller import controller
 
 
 class multi_purpose_controller(plcclientserverclass.socket_communication_class, controller):

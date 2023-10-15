@@ -16,14 +16,10 @@ import tkinter
 import tkinter.ttk
 from typing import List, Dict, Any
 
-from ..plc_gui import rf_generator_controller
+from ..plc_gui.rf_generator_controller import rf_generator_controller
 
-from . import read_config_file
+from .read_config_file import read_config_file
 from .class_rf_generator import rfg_gui
-
-# log = logging.getLogger("plc.rf_gen")
-# log.setLevel(logging.DEBUG)
-# log.addHandler(logging.NullHandler())
 
 
 class rf_generator_gui:
@@ -35,9 +31,9 @@ class rf_generator_gui:
 
     def __init__(
         self,
-        config: read_config_file.read_config_file,
+        config: read_config_file,
         pw: tkinter.Frame,
-        controller: Dict[str, Any],
+        _rfgc: rf_generator_controller,
         _log: logging.Logger,
     ) -> None:
         """__init__(self,config=None,pw=None,debugprint=None,controller=None)
@@ -58,7 +54,7 @@ class rf_generator_gui:
         self.padx = self.config.values.get("gui", "padx")
         self.pady = self.config.values.get("gui", "pady")
         self.pw = pw
-        self.rfgc: rf_generator_controller.rf_generator_controller = controller["rfgc"]
+        self.rfgc: rf_generator_controller = _rfgc
         self.maxcurrent = int(self.config.values.get("RF-Generator", "maxcurrent"))
         self.maxphase = int(self.config.values.get("RF-Generator", "maxphase"))
         if self.config.values.get("RF-Generator", "RF_only_master") == "1":
@@ -91,7 +87,6 @@ class rf_generator_gui:
         self.stop_controller_button.pack()
         # init
         self.gen_frm = tkinter.ttk.LabelFrame(self.frame, text="Generators")
-        # self.gen_frm.grid()
         self.gen_frms: List[rfg_gui] = []
         # ['RF-Generator 1','RF-Generator 2','RF-Generator 3']
         for g in range(3):

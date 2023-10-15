@@ -52,6 +52,7 @@ from . import acceleration_sensor
 from . import diagnostic_particles
 from .plcclientserverclass import scs_gui
 from ..plc_tools import plclogclasses
+from . import base_controller
 
 # from .misc import except_notify
 
@@ -97,8 +98,8 @@ class PLC(tkinter.Frame):
         self.log.debug(f"Found {self.configs.number_of_cameras} cameras in config file")
         self.log.debug(f"Found {self.configs.number_of_acceleration_sensor} acceleration sensors in config file")
         # more variables
-        self.update_intervall = int(self.configs.values.get("gui", "update_intervall"))  # milliseconds
-        self.check_buttons_intervall = int(self.configs.values.get("gui", "check_buttons_intervall"))  # milliseconds
+        self.update_intervall = self.configs.values.getint("gui", "update_intervall")  # milliseconds
+        self.check_buttons_intervall = self.configs.values.getint("gui", "check_buttons_intervall")  # milliseconds
         self.padx = self.configs.values.get("gui", "padx")
         self.pady = self.configs.values.get("gui", "pady")
         # set other variables
@@ -349,14 +350,14 @@ class PLC(tkinter.Frame):
         self.control_window = tkinter.Frame(self.user_interface, relief="solid", borderwidth=1)
         self.master_paned_window.add(self.control_window)
 
-        self.control_window1 = tkinter.Frame(self.control_window, relief="solid", borderwidth=1)
+        self.control_window1 = ttk.Frame(self.control_window, relief="solid", borderwidth=1)
         self.control_window1.pack()
         # create block for controller
         self.controller_window = tkinter.LabelFrame(self.control_window1, text="controller")
         self.controller_window.grid(column=0, row=0)
 
         # controller in a dict
-        self.controller: Dict[str, controller.controller] = {}
+        self.controller: Dict[str, base_controller.controller] = {}
 
         self.digital_controller_window = tkinter.LabelFrame(self.controller_window, text="digital", labelanchor="n")
         self.digital_controller_window.grid(column=0, row=0)
@@ -374,24 +375,18 @@ class PLC(tkinter.Frame):
         self.controller["mpc"].set_default_values()
         scs_gui(self.multi_purpose_controller_window, self.multi_purpose_controller)
 
-        # ----------------------------
-
         # electrode motion controller
         self.electrode_motion_controller_device = self.configs.values.get("electrode motion controller", "devicename")
         if self.electrode_motion_controller_device != "-1":
-            self.electrode_motion_controller_window = tkinter.LabelFrame(
-                self.controller_window, text="electrode motion", labelanchor="n"
-            )
+            self.electrode_motion_controller_window = ttk.Frame(self.controller_window)
             self.electrode_motion_controller_window.grid(column=2, row=0)
+            emc_power_controller = self.configs.values.get("electrode motion controller", "power_controller")
             self.electrode_motion_controller = controller.electrode_motion_controller(
-                config=self.configs,
-                pw=self.electrode_motion_controller_window,
-                debugprint=self.debugprint,
+                self.controller[emc_power_controller], self.configs, self.log.getChild("emc")
             )
             self.controller["emc"] = self.electrode_motion_controller
-            self.controller["emc"].gui()
-            self.controller["emc"].set_default_values()
 
+        # ----------------------------
         # translation stage controller
         self.translation_stage_device = self.configs.values.get("translation stage controller", "devicename")
         if self.translation_stage_device != "-1":
@@ -409,7 +404,7 @@ class PLC(tkinter.Frame):
             self.controller["tsc"].set_default_values()
 
         # create block for gas system
-        self.gas_system_window = ttk.LabelFrame(self.control_window1, text="Gas System")
+        self.gas_system_window = ttk.Frame(self.control_window1)
         self.gas_system_window.grid(column=1, row=0)
         self.gas_system = gas_system.gs(self.configs, self.log.getChild("GS"), self.controller)
         self.gs_gui = gas_system.gas_system(
@@ -417,6 +412,7 @@ class PLC(tkinter.Frame):
             self.gas_system,
             self.log.getChild("GS"),
         )
+        self.gs_gui.pack()
 
         # create block for RF-generator
         self.rf_generator_controller = controller.rf_generator_controller(
@@ -426,7 +422,7 @@ class PLC(tkinter.Frame):
         self.rf_generator_window = tkinter.Frame(self.control_window, relief="solid")
         self.rf_generator_window.pack()
         self.rf_generator = rf_generator.rf_generator_gui(
-            config=self.configs, pw=self.rf_generator_window, controller=self.controller, _log=self.log.getChild("rfgg")
+            self.configs, self.rf_generator_window, self.controller["rfgc"], self.log.getChild("rfgg")
         )
 
         # create block for diagnostic/particles
@@ -440,14 +436,14 @@ class PLC(tkinter.Frame):
         )
         # create block for electrode motion
         if self.electrode_motion_controller_device != "-1":
-            self.electrode_motion_window = ttk.LabelFrame(self.control_window, text="Electrode Motion")
+            self.electrode_motion_window = ttk.Frame(self.control_window)
             self.electrode_motion_window.pack()
             self.electrode_motion = electrode_motion.electrode_motion(
-                config=self.configs,
-                pw=self.electrode_motion_window,
-                _log=self.log.getChild("emc"),
-                controller=self.controller,
+                self.electrode_motion_window,
+                self.log.getChild("emc"),
+                self.electrode_motion_controller,
             )
+            self.electrode_motion.pack()
         # create block for translation stage
         if self.translation_stage_device != "-1":
             self.translation_stage_window = ttk.LabelFrame(self.control_window, text="Translation Stage")
@@ -807,10 +803,10 @@ class PLC(tkinter.Frame):
         self.debugprint("signum = %d" % signum)
         # signal.alarm(1)
 
-    def update(self):
+    def update(self) -> None:
         """update every dynamic read values"""
-        self.gas_system.update()
-        self.diagnostic_particles.update()
+        # self.gas_system.update()
+        # self.diagnostic_particles.update()
         # load
         (load1, load2, load3) = os.getloadavg()
         self.info_area_load_val.set("load=(%2.2f,%2.2f,%2.2f)" % (load1, load2, load3))
@@ -818,22 +814,24 @@ class PLC(tkinter.Frame):
         self.main_window.after(self.update_intervall, func=self.update)  # call update every ... milliseconds
 
     def check_buttons(self):
-        if self.electrode_motion_controller_device != "-1":
-            self.electrode_motion_controller.check_buttons()
-        if self.translation_stage_device != "-1":
-            self.translation_stage_controller.check_buttons()
-        # self.rf_generator_controller.check_buttons()
-        # self.rf_generator.check_buttons()
-        self.gas_system.check_buttons()
-        # self.rf_generator.check_buttons()
-        self.diagnostic_particles.check_buttons()
-        if self.electrode_motion_controller_device != "-1":
-            self.electrode_motion.check_buttons()
-        if self.translation_stage_device != "-1":
-            self.translation_stage.check_buttons()
-        self.main_window.after(
-            self.check_buttons_intervall, func=self.check_buttons
-        )  # call update every ... milliseconds
+        pass
+
+    #     if self.electrode_motion_controller_device != "-1":
+    #         self.electrode_motion_controller.check_buttons()
+    #     if self.translation_stage_device != "-1":
+    #         self.translation_stage_controller.check_buttons()
+    #     # self.rf_generator_controller.check_buttons()
+    #     # self.rf_generator.check_buttons()
+    #     self.gas_system.check_buttons()
+    #     # self.rf_generator.check_buttons()
+    #     self.diagnostic_particles.check_buttons()
+    #     if self.electrode_motion_controller_device != "-1":
+    #         self.electrode_motion.check_buttons()
+    #     if self.translation_stage_device != "-1":
+    #         self.translation_stage.check_buttons()
+    #     self.main_window.after(
+    #         self.check_buttons_intervall, func=self.check_buttons
+    #     )  # call update every ... milliseconds
 
     def switch_debug_infos_off(self):
         self.debugprint("debug infos off")
@@ -889,61 +887,63 @@ class PLC(tkinter.Frame):
                 self.set_setpoints()
 
     def set_setpoints(self, event=None):
-        """set setpoints
+        pass
 
-        Author: Daniel Mohr
-        Date: 2012-09-07
-        """
-        if self.setpoints_choose is not None:
-            i = self.setpoints_choose
-            s = self.setpoints.sections()[i]
-            self.log.debug("set setpoints %d: %s" % (i, s))
-            self.info_area_setpoints["set setpoint"].flash()
-            if self.setpoints.has_option(s, "mass_flow_on_off"):
-                if self.setpoints.getboolean(s, "mass_flow_on_off"):
-                    self.gas_system.mass_flow_checkbutton.select()
-                else:
-                    self.gas_system.mass_flow_checkbutton.deselect()
-                self.gas_system.mass_flow()
-            if self.setpoints.has_option(s, "mass_flow"):
-                self.gas_system.mass_flow_set_flow_rate_val.set(self.setpoints.get(s, "mass_flow"))
-                self.gas_system.set_mass_flow_rate()
-            # RF
-            # setcurrents = False
-            # setphases = False
-            # for i in range(12):
-            #     c = i % 4  # channel
-            #     g = round((i - c) / 4)  # generator
-            #     if self.rf_generator.generator[g].exists:
-            #         if self.setpoints.has_option(s, "pwr_channel_%d" % (i + 1)):
-            #             if self.setpoints.getboolean(s, "pwr_channel_%d" % (i + 1)):
-            #                 self.rf_generator.generator[g].channel[c].onoff_status_checkbutton.select()
-            #             else:
-            #                 self.rf_generator.generator[g].channel[c].onoff_status_checkbutton.deselect()
-            #             self.rf_generator.rf_channel_onoff_cmd()
-            #         if self.setpoints.has_option(s, "current_channel_%d" % (i + 1)):
-            #             setcurrents = True
-            #             self.rf_generator.generator[g].channel[c].current_status.set(self.setpoints.getint(s, "current_channel_%d" % (i + 1)))
-            #         if self.setpoints.has_option(s, "phase_channel_%d" % (i + 1)):
-            #             setphases = True
-            #             self.rf_generator.generator[g].channel[c].phase_status.set(self.setpoints.getint(s, "phase_channel_%d" % (i + 1)))
-            #         if self.setpoints.has_option(s, "combined_channel_%d" % (i + 1)):
-            #             if self.setpoints.getboolean(s, "combined_channel_%d" % (i + 1)):
-            #                 self.rf_generator.generator[g].channel[c].choose_checkbutton.select()
-            #             else:
-            #                 self.rf_generator.generator[g].channel[c].choose_checkbutton.deselect()
-            # if setcurrents:
-            #     self.rf_generator.set_currents()
-            # if setphases:
-            #     self.rf_generator.set_phases()
-            # if self.setpoints.has_option(s, "rf_on_off"):
-            #     if self.setpoints.getboolean(s, "rf_on_off"):
-            #         self.rf_generator.combined_change_button3_cmd()
-            #     else:
-            #         self.rf_generator.combined_change_button4_cmd()
-            # if self.setpoints.has_option(s, "ignite_plasma"):
-            #     if self.setpoints.getboolean(s, "ignite_plasma"):
-            #         self.rf_generator.ignite_plasma()
+    #     """set setpoints
+
+    #     Author: Daniel Mohr
+    #     Date: 2012-09-07
+    #     """
+    #     if self.setpoints_choose is not None:
+    #         i = self.setpoints_choose
+    #         s = self.setpoints.sections()[i]
+    #         self.log.debug("set setpoints %d: %s" % (i, s))
+    #         self.info_area_setpoints["set setpoint"].flash()
+    #         if self.setpoints.has_option(s, "mass_flow_on_off"):
+    #             if self.setpoints.getboolean(s, "mass_flow_on_off"):
+    #                 self.gas_system.mass_flow_checkbutton.select()
+    #             else:
+    #                 self.gas_system.mass_flow_checkbutton.deselect()
+    #             self.gas_system.mass_flow()
+    #         if self.setpoints.has_option(s, "mass_flow"):
+    #             self.gas_system.mass_flow_set_flow_rate_val.set(self.setpoints.get(s, "mass_flow"))
+    #             self.gas_system.set_mass_flow_rate()
+    #         # RF
+    #         setcurrents = False
+    #         setphases = False
+    #         for i in range(12):
+    #             c = i % 4  # channel
+    #             g = round((i - c) / 4)  # generator
+    #             if self.rf_generator.generator[g].exists:
+    #                 if self.setpoints.has_option(s, "pwr_channel_%d" % (i + 1)):
+    #                     if self.setpoints.getboolean(s, "pwr_channel_%d" % (i + 1)):
+    #                         self.rf_generator.generator[g].channel[c].onoff_status_checkbutton.select()
+    #                     else:
+    #                         self.rf_generator.generator[g].channel[c].onoff_status_checkbutton.deselect()
+    #                     self.rf_generator.rf_channel_onoff_cmd()
+    #                 if self.setpoints.has_option(s, "current_channel_%d" % (i + 1)):
+    #                     setcurrents = True
+    #                     self.rf_generator.generator[g].channel[c].current_status.set(self.setpoints.getint(s, "current_channel_%d" % (i + 1)))
+    #                 if self.setpoints.has_option(s, "phase_channel_%d" % (i + 1)):
+    #                     setphases = True
+    #                     self.rf_generator.generator[g].channel[c].phase_status.set(self.setpoints.getint(s, "phase_channel_%d" % (i + 1)))
+    #                 if self.setpoints.has_option(s, "combined_channel_%d" % (i + 1)):
+    #                     if self.setpoints.getboolean(s, "combined_channel_%d" % (i + 1)):
+    #                         self.rf_generator.generator[g].channel[c].choose_checkbutton.select()
+    #                     else:
+    #                         self.rf_generator.generator[g].channel[c].choose_checkbutton.deselect()
+    #         if setcurrents:
+    #             self.rf_generator.set_currents()
+    #         if setphases:
+    #             self.rf_generator.set_phases()
+    #         if self.setpoints.has_option(s, "rf_on_off"):
+    #             if self.setpoints.getboolean(s, "rf_on_off"):
+    #                 self.rf_generator.combined_change_button3_cmd()
+    #             else:
+    #                 self.rf_generator.combined_change_button4_cmd()
+    #         if self.setpoints.has_option(s, "ignite_plasma"):
+    #             if self.setpoints.getboolean(s, "ignite_plasma"):
+    #                 self.rf_generator.ignite_plasma()
 
     def choose_setpoint(self, i=0):
         self.setpoints_choose = i

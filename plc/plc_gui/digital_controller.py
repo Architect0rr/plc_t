@@ -29,7 +29,7 @@ from typing import List, Dict, Any
 
 from . import plcclientserverclass
 from .read_config_file import read_config_file
-from .controller import controller
+from .base_controller import controller
 
 
 class digital_controller(plcclientserverclass.socket_communication_class, controller):
