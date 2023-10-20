@@ -13,10 +13,10 @@ import argparse
 import logging.handlers
 from typing import Dict, Any
 
-from plc.plc_tools import plc_socket_communication
+from plc.plc_tools.plc_socket_communication import socket_communication
 
 
-class gui(plc_socket_communication.tools_for_socket_communication):
+class gui(socket_communication):
     def __init__(self, args: argparse.Namespace, log: logging.Logger) -> None:
         super().__init__()
         self.bufsize: int = 4096  # read/receive Bytes at once
@@ -185,8 +185,8 @@ class gui(plc_socket_communication.tools_for_socket_communication):
         if self.connected:
             self.log.debug("get actualvalues from the server")
             # self.socket.sendall("getact")
-            self.send_data_to_socket(self.socket, b"getact")
-            self.actualvalue = self.receive_data_from_socket(self.socket, self.bufsize)
+            self.send(b"getact")
+            self.actualvalue = self.receive(self.bufsize)
             channel = 0
             for p in ["A", "B", "C", "D"]:
                 for c in range(8):
@@ -210,7 +210,7 @@ class gui(plc_socket_communication.tools_for_socket_communication):
     def get_version(self):
         if self.connected:
             # self.socket.sendall("version")
-            self.send_data_to_socket(self.socket, b"version")
+            self.send(b"version")
             v = self.socket.recv(self.bufsize)
             self.log.info("server-version: %s" % v)
 
@@ -221,7 +221,7 @@ class gui(plc_socket_communication.tools_for_socket_communication):
             self.log.debug("set timedelay of the server to %03d ms" % v)
             # self.socket.sendall("timedelay%03d" % v)
             ms = "timedelay%03d" % v
-            self.send_data_to_socket(self.socket, ms.encode("urf-8"))
+            self.send(ms.encode("urf-8"))
 
     def shake_dispenser(self):
         self.setpoint["dispenser"]["shake"] = True
@@ -253,7 +253,7 @@ class gui(plc_socket_communication.tools_for_socket_communication):
             v = "p %s" % self.create_send_format(self.setpoint)
             if self.trigger_out_var.get() == 1:
                 v = "%s!w2d" % v
-            self.send_data_to_socket(self.socket, v.encode("utf-8"))
+            self.send(v.encode("utf-8"))
         self.main_window.after(100, func=self.get_actualvalues)  # call after 100 milliseconds
 
     def open_connection_command(self):
@@ -289,7 +289,7 @@ class gui(plc_socket_communication.tools_for_socket_communication):
         if self.connected:
             self.log.info("quit server and disconnect")
             # self.socket.sendall("quit")
-            self.send_data_to_socket(self.socket, b"quit")
+            self.send(b"quit")
             self.close_connection_command()
 
 

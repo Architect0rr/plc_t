@@ -8,63 +8,79 @@ import pickle
 import socket
 import struct
 import threading
+import functools
+from typing import Any, List, TypeVar, Callable
 
-from typing import Any, List
+
+T = TypeVar("T")
 
 
-class tools_for_socket_communication:
-    def __init__(self):
-        self.send_data_to_socket_lock = threading.Lock()
+def socketlock(fn: Callable[..., T]):  # type: ignore
+    @functools.wraps(fn)
+    def wrapper(*args, **kwargs) -> T:
+        self: socket_communication = args[0]
+        self.socket_lock.acquire()
+        fr: T = fn(*args, **kwargs)
+        self.socket_lock.release()
+        return fr
 
-    def send_data_to_socket(self, s: socket.socket, msg: bytes) -> None:
-        self.send_data_to_socket_lock.acquire()  # lock
+    return wrapper
+
+
+class socket_communication:
+    def __init__(self) -> None:
+        self.socket_lock = threading.RLock()
+        self.socket: socket.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.socket.setblocking(False)
+
+    @socketlock
+    def __recv(self, num: int) -> bytes:
+        return self.socket.recv(num)
+
+    @socketlock
+    def __send(self, data: bytes) -> int:
+        return self.socket.send(data)
+
+    def send(self, msg: bytes) -> None:
         totalsent = 0
         msglen = len(msg)
         while totalsent < msglen:
-            sent = s.send(msg[totalsent:])
+            sent = self.__send(msg[totalsent:])
             if sent == 0:
                 raise RuntimeError("Socket connection broken")
             totalsent = totalsent + sent
-        self.send_data_to_socket_lock.release()  # release the lock
 
-    def create_send_format(self, data) -> bytes:
+    def create_send_format(self, data: Any) -> bytes:
         s: bytes = pickle.dumps(data, -1)
         asd = bytearray(struct.pack(b"!i", len(s)))
         asd.extend(s)
         return bytes(asd)
 
-    def recv_sock(self, s: socket.socket, num: int) -> bytes:
-        return s.recv(num)
-
-    def receive_data_from_socket(self, s: socket.socket, bufsize=4096, max_tries=1024 * 1024) -> Any:
-        self.send_data_to_socket_lock.acquire()  # lock
+    def receive(self, bufsize=4096, max_tries=1024 * 1024) -> Any:
         data: bytes = b""
         expected_length = 4
         tries = 0
         while (len(data) < expected_length) and (tries < max_tries):
-            data += self.recv_sock(s, min(expected_length - len(data), bufsize))
+            data += self.__recv(min(expected_length - len(data), bufsize))
             tries += 1
         if tries >= max_tries:
             raise socket.timeout
         expected_length += struct.unpack("!i", (data[0:4]))[0]
         while (len(data) < expected_length) and (tries < max_tries):
-            data += self.recv_sock(s, min(expected_length - len(data), bufsize))
+            data += self.__recv(min(expected_length - len(data), bufsize))
             tries += 1
-        self.send_data_to_socket_lock.release()  # release the lock
         if tries >= max_tries:
             raise socket.timeout
         return pickle.loads((data[4:]))
 
-    def receive_data_from_socket2(self, s: socket.socket, bufsize: int = 4096, _data: str = "") -> List[Any]:
+    def receive_data2(self, bufsize: int = 4096, _data: str = "") -> List[Any]:
         data = _data.encode("utf-8")
-        self.send_data_to_socket_lock.acquire()  # lock
         expected_length = 4
         while len(data) < expected_length:
-            data += s.recv(bufsize)
+            data += self.__recv(bufsize)
         expected_length += struct.unpack("!i", (data[0:4]))[0]
         while len(data) < expected_length:
-            data += s.recv(bufsize)
+            data += self.__recv(bufsize)
         v = pickle.loads((data[4:expected_length]))
         data = data[expected_length:]
-        self.send_data_to_socket_lock.release()  # release the lock
         return [data, v]

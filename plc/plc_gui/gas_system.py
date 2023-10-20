@@ -75,6 +75,9 @@ class gs:
         self.controller[self.mpsc].setpoint[self.mpsp][self.mpsca] = state
         self.controller[self.mpsc].lock.release()  # release the lock
 
+    def mpc_connected(self) -> bool:
+        return self.controller[self.mpsc].connected
+
     def turbo_pump_1(self, state: bool) -> None:
         self.log.debug(f"Switching turbo pump 1 to {b2onoff(state)}")
 
@@ -82,12 +85,18 @@ class gs:
         self.controller[self.tp1sc].setpoint[self.tp1sp][self.tp1sca] = state
         self.controller[self.tp1sc].lock.release()  # release the lock
 
+    def tp1c_connected(self) -> bool:
+        return self.controller[self.tp1sc].connected
+
     def turbo_pump_2(self, state: bool) -> None:
         self.log.debug(f"Switching turbo pump 2 to {b2onoff(state)}")
 
         self.controller[self.tp2sc].lock.acquire()  # lock
         self.controller[self.tp2sc].setpoint[self.tp2sp][self.tp2sca] = state
         self.controller[self.tp2sc].lock.release()  # release the lock
+
+    def tp2c_connected(self) -> bool:
+        return self.controller[self.tp2sc].connected
 
     def mass_flow(self, state: bool) -> None:
         self.log.debug(f"Switching mass flow controller to {b2onoff(state)}")
@@ -101,6 +110,9 @@ class gs:
             except Exception:
                 pass
         self.controller[self.mfcsc].lock.release()  # release the lock
+
+    def mfc_connected(self) -> bool:
+        return self.controller[self.mfcsc].connected
 
     def set_mass_flow_rate(self, v) -> str:
         # X = 0 ... 5 V = 0 ... 1 sccm (flow)
@@ -289,11 +301,11 @@ class gas_system(tkinter.ttk.LabelFrame):
         self.mass_flow_status_label.grid(column=1, row=0)
         self.mass_flow_set_flow_rate_val = tkinter.StringVar()
         self.mass_flow_set_flow_rate_entry = tkinter.Entry(
-            self.mass_flow_frame, textvariable=self.mass_flow_set_flow_rate_val, width=8
+            self.mass_flow_frame, textvariable=self.mass_flow_set_flow_rate_val, width=8, state=tkinter.DISABLED
         )
         self.mass_flow_set_flow_rate_entry.grid(column=2, row=0)
         self.mass_flow_set_flow_rate_button = tkinter.Button(
-            self.mass_flow_frame, command=self.set_mass_flow_rate, text="set"
+            self.mass_flow_frame, command=self.set_mass_flow_rate, text="set", state=tkinter.DISABLED
         )
         self.mass_flow_set_flow_rate_button.grid(column=3, row=0)
         self.mass_flow_flow_rate_val = tkinter.StringVar()
@@ -354,20 +366,26 @@ class gas_system(tkinter.ttk.LabelFrame):
         self.mass_flow_status_val.set(b2onoff(self.backend.mass_flow_controller_status()))
         self.mass_flow_flow_rate_val.set("%.2f msccm" % volt2msccm(self.backend.mass_flow_controller_measure_rate()))
 
-    # def check_buttons(self):
-    #     if self.controller["dc"].connected:
-    #         self.membran_pump_checkbutton.configure(state=tkinter.NORMAL)
-    #     else:
-    #         self.membran_pump_checkbutton.configure(state=tkinter.DISABLED)
-    #     if self.controller["mpc"].connected:
-    #         self.turbo_pump_1_checkbutton.configure(state=tkinter.NORMAL)
-    #         self.turbo_pump_2_checkbutton.configure(state=tkinter.NORMAL)
-    #         self.mass_flow_checkbutton.configure(state=tkinter.NORMAL)
-    #         self.mass_flow_set_flow_rate_entry.configure(state=tkinter.NORMAL)
-    #         self.mass_flow_set_flow_rate_button.configure(state=tkinter.NORMAL)
-    #     else:
-    #         self.turbo_pump_1_checkbutton.configure(state=tkinter.DISABLED)
-    #         self.turbo_pump_2_checkbutton.configure(state=tkinter.DISABLED)
-    #         self.mass_flow_checkbutton.configure(state=tkinter.DISABLED)
-    #         self.mass_flow_set_flow_rate_entry.configure(state=tkinter.DISABLED)
-    #         self.mass_flow_set_flow_rate_button.configure(state=tkinter.DISABLED)
+        if self.backend.mpc_connected():
+            self.membran_pump_checkbutton.configure(state=tkinter.NORMAL)
+        else:
+            self.membran_pump_checkbutton.configure(state=tkinter.DISABLED)
+
+        if self.backend.tp1c_connected():
+            self.turbo_pump_1_checkbutton.configure(state=tkinter.NORMAL)
+        else:
+            self.turbo_pump_1_checkbutton.configure(state=tkinter.DISABLED)
+
+        if self.backend.tp2c_connected():
+            self.turbo_pump_2_checkbutton.configure(state=tkinter.NORMAL)
+        else:
+            self.turbo_pump_2_checkbutton.configure(state=tkinter.DISABLED)
+
+        if self.backend.mfc_connected():
+            self.mass_flow_checkbutton.configure(state=tkinter.NORMAL)
+            self.mass_flow_set_flow_rate_entry.configure(state=tkinter.NORMAL)
+            self.mass_flow_set_flow_rate_button.configure(state=tkinter.NORMAL)
+        else:
+            self.mass_flow_checkbutton.configure(state=tkinter.DISABLED)
+            self.mass_flow_set_flow_rate_entry.configure(state=tkinter.DISABLED)
+            self.mass_flow_set_flow_rate_button.configure(state=tkinter.DISABLED)

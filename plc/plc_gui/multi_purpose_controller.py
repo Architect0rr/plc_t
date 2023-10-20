@@ -7,12 +7,12 @@ Date: 2013-05-13
 import logging
 from typing import Dict, List, Any
 
-from . import plcclientserverclass
+from .plcclientserverclass import data_lock, general_lock, socket_communication_class
 from .read_config_file import read_config_file
 from .base_controller import controller
 
 
-class multi_purpose_controller(plcclientserverclass.socket_communication_class, controller):
+class multi_purpose_controller(socket_communication_class, controller):
     """class for multi purpose controller (blue box)
 
     Author: Daniel Mohr
@@ -46,6 +46,8 @@ class multi_purpose_controller(plcclientserverclass.socket_communication_class, 
         self.setpoint_port: List[str] = ["DO", "R", "U05", "U15", "U24", "DAC"]
         self.actualvalue_port: List[str] = ["DO", "R", "U05", "U15", "U24", "DAC", "DI", "ADC"]
 
+    @data_lock
+    @general_lock
     def set_default_values(self) -> None:
         """set default values
 
@@ -56,7 +58,6 @@ class multi_purpose_controller(plcclientserverclass.socket_communication_class, 
         Author: Daniel Mohr
         Date: 2012-11-27
         """
-        self.lock.acquire()  # lock
         port = "DO"
         for channel in range(4):
             self.setpoint[port][channel] = None
@@ -69,11 +70,8 @@ class multi_purpose_controller(plcclientserverclass.socket_communication_class, 
         for channel in range(4):
             self.setpoint[port][channel] = None
         if self.socket is not None:
-            self.socketlock.acquire()  # lock
             self.get_actualvalues()
-            self.socketlock.release()  # release the lock
         else:
-            # self.actualvalue[port][channel] = False
             port = "DO"
             for channel in range(4):
                 self.actualvalue[port][channel] = False
@@ -91,8 +89,8 @@ class multi_purpose_controller(plcclientserverclass.socket_communication_class, 
             port = "ADC"
             for channel in range(8):
                 self.actualvalue[port][channel] = 0
-        self.lock.release()  # release the lock
 
+    @data_lock
     def actualvalue2setpoint(self) -> None:
         port = "DO"
         for channel in range(4):

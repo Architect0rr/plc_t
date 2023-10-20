@@ -27,12 +27,12 @@ class for digital controller (red box)
 import logging
 from typing import List, Dict, Any
 
-from . import plcclientserverclass
+from .plcclientserverclass import socket_communication_class, if_connect, data_lock
 from .read_config_file import read_config_file
 from .base_controller import controller
 
 
-class digital_controller(plcclientserverclass.socket_communication_class, controller):
+class digital_controller(socket_communication_class, controller):
     """
     class for digital controller (red box)
     """
@@ -58,7 +58,8 @@ class digital_controller(plcclientserverclass.socket_communication_class, contro
         }  # dict of values on device
         self.ports: List[str] = ["A", "B", "C", "D"]
 
-    def set_default_values(self) -> None:
+    @if_connect
+    def set_default_values(self) -> bool:
         """set default values
 
         set setpoint[...] to 0 or False
@@ -68,23 +69,19 @@ class digital_controller(plcclientserverclass.socket_communication_class, contro
         Author: Daniel Mohr
         Date: 2012-11-27
         """
-        self.lock.acquire()  # lock
+        self.datalock.acquire()
         for port in self.ports:
             for channel in range(8):
                 self.setpoint[port][channel] = None
-        if self.connected:
-            self.socketlock.acquire()  # lock
-            self.get_actualvalues()
-            self.socketlock.release()  # release the lock
-        else:
-            for port in self.ports:
-                for channel in range(8):
-                    self.actualvalue[port][channel] = False
-        self.lock.release()  # release the lock
+        self.datalock.release()
+        self.get_actualvalues()
+        return True
 
+    @data_lock
     def myextra_socket_communication_with_server(self) -> None:
         self.setpoint["dispenser"]["shake"] = False
 
+    @data_lock
     def actualvalue2setpoint(self) -> None:
         for port in self.ports:
             for channel in range(8):

@@ -25,6 +25,6 @@ Tools for plc
 """
 
 from . import plclogclasses
-from . import plccameraguidefaultclass
+# from . import plccameraguidefaultclass
 from . import conversion
 from . import plc_socket_communication

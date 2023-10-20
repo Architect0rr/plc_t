@@ -36,12 +36,12 @@ from typing import Dict, Any, List, NoReturn
 
 import PIL.ImageTk  # type: ignore
 
-import tkinter
+import tkinter as tk
 import tkinter.messagebox
 import tkinter.filedialog
 from tkinter import ttk
 
-from . import camera
+# from . import camera
 from . import gas_system
 from . import controller
 from . import rf_generator
@@ -57,26 +57,36 @@ from . import base_controller
 # from .misc import except_notify
 
 
-class PLC(tkinter.Frame):
+class Splash(tk.Toplevel):
+    def __init__(self, parent):
+        tk.Toplevel.__init__(self, parent)
+        self.title("Splash")
+
+        ## required to make window show before the program gets to the mainloop
+        self.update()
+
+
+class PLC(tk.Frame):
     """
     class for the GUI for plc
     """
 
     @classmethod
-    def main(cls, log: logging.Logger, system_conffile: Path, conffile: Path):
-        # tkinter.NoDefaultRoot()
-        root = tkinter.Tk()
-        app = cls(root, log, system_conffile, conffile)
+    def main(cls, log: logging.Logger, system_conffile: Path, conffile: Path) -> NoReturn:
+        # tk.NoDefaultRoot()
+        root = tk.Tk()
         # app.grid(sticky=tcs.NSEW)
         # root.grid_columnconfigure(0, weight=1)
         # root.grid_rowconfigure(0, weight=1)
         root.resizable(True, True)
+
+        app = cls(root, log, system_conffile, conffile)
         root.after(app.update_intervall, func=app.update)  # call update every ... milliseconds
         root.after(app.check_buttons_intervall, func=app.check_buttons)  # call update every ... milliseconds
         root.mainloop()
         app.exit()
 
-    def __init__(self, root: tkinter.Tk, _log: logging.Logger, system_conffile: Path, conffile: Path) -> None:
+    def __init__(self, root: tk.Tk, _log: logging.Logger, system_conffile: Path, conffile: Path) -> None:
         """
         GUI initialization
         """
@@ -107,25 +117,25 @@ class PLC(tkinter.Frame):
         self.debug = 1  # self.args.debug
 
         # main code
-        self.main_window = root  # tkinter.Tk()
+        self.main_window = root  # tk.Tk()
         self.screenx = self.main_window.winfo_screenwidth()
         self.screeny = self.main_window.winfo_screenheight()
         # self.main_window.title(f"plc - PlasmaLabControl ({self.conffile.as_posix()})")
-        self.main_window.title("plc - PlasmaLabControl (development 22261104)")
+        self.main_window.title("plc - PlasmaLabControl (development 01281121)")
 
         # ########################
         # ####### M E N U ########
         # ########################
 
-        self.menu = tkinter.Menu(self.main_window)
+        self.menu = tk.Menu(self.main_window)
         # file menu
-        self.filemenu = tkinter.Menu(self.menu)
+        self.filemenu = tk.Menu(self.menu)
         self.menu.add_cascade(label="File", menu=self.filemenu)
         self.filemenu.add_command(label="Read setpoints", command=self.read_setpoints)
         self.filemenu.add_command(label="Save default config", command=self.save_default_config)
         self.filemenu.add_command(label="Exit", command=self.exit_button)
         # Programs
-        self.programmenu = tkinter.Menu(self.menu)
+        self.programmenu = tk.Menu(self.menu)
         self.menu.add_cascade(label="Programs", menu=self.programmenu)
         self.programmenu.add_command(label="camera_client.py", command=self.start_extern_program_camera_client)
         self.programmenu.add_command(
@@ -142,9 +152,9 @@ class PLC(tkinter.Frame):
         self.programmenu.add_command(label="rawmovieviewer.py", command=self.start_extern_program_rawmovieviewer)
 
         # debug
-        self.debugmenu = tkinter.Menu(self.menu)
+        self.debugmenu = tk.Menu(self.menu)
         self.menu.add_cascade(label="Debug", menu=self.debugmenu)
-        self.debugmenu_status = tkinter.IntVar()
+        self.debugmenu_status = tk.IntVar()
         self.debugmenu.add_checkbutton(
             label="debug infos on/off",
             command=self.switch_debug_infos_on_off,
@@ -153,30 +163,30 @@ class PLC(tkinter.Frame):
         self.debugmenu_status.set(1 if self.debug == 1 else 0)
 
         # help menu
-        self.helpmenu = tkinter.Menu(self.menu)
+        self.helpmenu = tk.Menu(self.menu)
         self.menu.add_cascade(label="Help", menu=self.helpmenu)
         self.helpmenu.add_command(label="About...", command=self.about)
 
         self.main_window.config(menu=self.menu)
         # create toolbar
-        self.toolbar = tkinter.Frame(self.main_window)
-        self.toolbar.pack(expand=True, fill=tkinter.X)
+        self.toolbar = tk.Frame(self.main_window)
+        self.toolbar.pack(expand=True, fill=tk.X)
         # create info area in toolbar
-        self.info_area = tkinter.Frame(self.toolbar)
-        self.info_area.pack(expand=True, fill=tkinter.X)
-        self.info_area_load_val = tkinter.StringVar()
-        self.info_area_load = tkinter.Label(
+        self.info_area = tk.Frame(self.toolbar)
+        self.info_area.pack(expand=True, fill=tk.X)
+        self.info_area_load_val = tk.StringVar()
+        self.info_area_load = tk.Label(
             self.info_area, textvariable=self.info_area_load_val, height=1, width=21, anchor="sw"
         )
         self.info_area_load_val.set("")
-        self.info_area_load.pack(side=tkinter.RIGHT)
+        self.info_area_load.pack(side=tk.RIGHT)
         # create acceleration sensor
         self.info_area_acceleration_sensor_vals = []
         self.info_area_acceleration_sensors = []
         for i in range(self.configs.number_of_acceleration_sensor):
-            self.info_area_acceleration_sensor_vals += [tkinter.StringVar()]
+            self.info_area_acceleration_sensor_vals += [tk.StringVar()]
             self.info_area_acceleration_sensors += [
-                tkinter.Label(
+                tk.Label(
                     self.info_area,
                     textvariable=self.info_area_acceleration_sensor_vals[i],
                     height=1,
@@ -185,7 +195,7 @@ class PLC(tkinter.Frame):
                 )
             ]
             self.info_area_acceleration_sensor_vals[i].set("acc%d=(?.??,?.??,?.??)" % (i + 1))
-            self.info_area_acceleration_sensors[i].pack(side=tkinter.RIGHT)
+            self.info_area_acceleration_sensors[i].pack(side=tk.RIGHT)
 
         # ########################
         # ####### T A B S ########
@@ -193,7 +203,7 @@ class PLC(tkinter.Frame):
 
         # create tabs
         self.tabs = ttk.Notebook(self.main_window)
-        self.maintab = tkinter.Frame(self.tabs)
+        self.maintab = tk.Frame(self.tabs)
         self.tabs.add(self.maintab, text="Main", sticky="NW")
 
         # create camera tabs
@@ -203,7 +213,7 @@ class PLC(tkinter.Frame):
         index = 0
         for i in range(self.configs.number_of_cameras):
             index += 1
-            self.camera_tabs += [tkinter.Frame(self.tabs)]
+            self.camera_tabs += [tk.Frame(self.tabs)]
             self.camera_notebook_index += [index]
             self.tabs.add(self.camera_tabs[i], text="cam %d" % (i + 1), sticky="NW")
 
@@ -212,11 +222,11 @@ class PLC(tkinter.Frame):
         self.acceleration_sensor_notebook_index = []
         for i in range(self.configs.number_of_acceleration_sensor):
             index += 1
-            self.acceleration_sensor_tabs += [tkinter.Frame(self.tabs)]
+            self.acceleration_sensor_tabs += [tk.Frame(self.tabs)]
             self.acceleration_sensor_notebook_index += [index]
             self.tabs.add(self.acceleration_sensor_tabs[i], text="acc. %d" % (i + 1), sticky="NW")
         #
-        self.tabs.pack(expand=True, fill=tkinter.X)
+        self.tabs.pack(expand=True, fill=tk.X)
         self.tabs.select(0)
 
         # ########################
@@ -228,21 +238,21 @@ class PLC(tkinter.Frame):
         # ########################
 
         # create user_interface area
-        self.user_interface = tkinter.Frame(self.maintab, relief="solid", borderwidth=1)
+        self.user_interface = tk.Frame(self.maintab, relief="solid", borderwidth=1)
         self.user_interface.pack()
-        self.master_paned_window = tkinter.PanedWindow(self.user_interface, orient=tkinter.HORIZONTAL)
+        self.master_paned_window = tk.PanedWindow(self.user_interface, orient=tk.HORIZONTAL)
         self.master_paned_window.pack()
 
         # create blocks with content
         # create block for camera
-        self.cameras_window = tkinter.LabelFrame(self.user_interface, text="Cameras")
+        self.cameras_window = tk.LabelFrame(self.user_interface, text="Cameras")
         # self.master_paned_window.add(self.cameras_window, width=7 + self.configs.values.getint("cameras", "width_in_main_tab"))
         self.master_paned_window.add(self.cameras_window)
-        self.cameras_window_control = tkinter.Frame(self.cameras_window)
+        self.cameras_window_control = tk.Frame(self.cameras_window)
         self.cameras_window_control.pack()
 
         # cameras, record
-        self.cameras_connect_button = tkinter.Button(
+        self.cameras_connect_button = tk.Button(
             self.cameras_window_control,
             text="connect",
             command=self.connect_cameras,
@@ -250,7 +260,7 @@ class PLC(tkinter.Frame):
             pady=self.pady,
         )
         self.cameras_connect_button.grid(column=0, row=0)
-        self.cameras_disconnect_button = tkinter.Button(
+        self.cameras_disconnect_button = tk.Button(
             self.cameras_window_control,
             text="disconnect",
             command=self.disconnect_cameras,
@@ -258,7 +268,7 @@ class PLC(tkinter.Frame):
             pady=self.pady,
         )
         self.cameras_disconnect_button.grid(column=0, row=1)
-        self.cameras_quit_button = tkinter.Button(
+        self.cameras_quit_button = tk.Button(
             self.cameras_window_control,
             text="quit cams",
             command=self.quit_cameras,
@@ -266,7 +276,7 @@ class PLC(tkinter.Frame):
             pady=self.pady,
         )
         self.cameras_quit_button.grid(column=0, row=2)
-        self.cameras_start_live_view_button = tkinter.Button(
+        self.cameras_start_live_view_button = tk.Button(
             self.cameras_window_control,
             text="start view",
             command=self.start_live_view_cameras,
@@ -274,7 +284,7 @@ class PLC(tkinter.Frame):
             pady=self.pady,
         )
         self.cameras_start_live_view_button.grid(column=0, row=3)
-        self.cameras_stop_live_view_button = tkinter.Button(
+        self.cameras_stop_live_view_button = tk.Button(
             self.cameras_window_control,
             text="stop view",
             command=self.stop_live_view_cameras,
@@ -282,7 +292,7 @@ class PLC(tkinter.Frame):
             pady=self.pady,
         )
         self.cameras_stop_live_view_button.grid(column=0, row=4)
-        self.cameras_start_record_button = tkinter.Button(
+        self.cameras_start_record_button = tk.Button(
             self.cameras_window_control,
             text="start record",
             command=self.start_record_cameras,
@@ -290,7 +300,7 @@ class PLC(tkinter.Frame):
             pady=self.pady,
         )
         self.cameras_start_record_button.grid(column=0, row=5)
-        self.cameras_stop_record_button = tkinter.Button(
+        self.cameras_stop_record_button = tk.Button(
             self.cameras_window_control,
             text="stop record",
             command=self.stop_record_cameras,
@@ -299,27 +309,27 @@ class PLC(tkinter.Frame):
         )
         self.cameras_stop_record_button.grid(column=0, row=6)
         # camera pictures
-        self.cameras_window_view = tkinter.Frame(self.cameras_window)
+        self.cameras_window_view = tk.Frame(self.cameras_window)
         self.cameras_window_view.pack()
         self.camera_picture_x = self.configs.values.getint("cameras", "width_in_main_tab")
         self.create_camera_movie_labels(self.cameras_window_view)
         # cameras
         self.cameras = []
-        for i in range(self.configs.number_of_cameras):
-            self.cameras += [
-                camera.camera(
-                    config=self.configs,
-                    confsect="camera%d" % (i + 1),
-                    pw=self.camera_tabs[i],
-                    screenx=self.screenx,
-                    screeny=self.screeny,
-                    extern_img=self.cameras_imgs[i],
-                    extern_x=self.camera_picture_x,
-                    notebook=self.tabs,
-                    notebookindex=self.camera_notebook_index[i],
-                    notebookextern=0,
-                )
-            ]
+        # for i in range(self.configs.number_of_cameras):
+        #     self.cameras += [
+        #         camera.camera(
+        #             config=self.configs,
+        #             confsect="camera%d" % (i + 1),
+        #             pw=self.camera_tabs[i],
+        #             screenx=self.screenx,
+        #             screeny=self.screeny,
+        #             extern_img=self.cameras_imgs[i],
+        #             extern_x=self.camera_picture_x,
+        #             notebook=self.tabs,
+        #             notebookindex=self.camera_notebook_index[i],
+        #             notebookextern=0,
+        #         )
+        #     ]
 
         # ########################
         # ##### M A I N  TAB ##### : Acceleration sensors
@@ -347,26 +357,26 @@ class PLC(tkinter.Frame):
         # ########################
 
         # create other blocks
-        self.control_window = tkinter.Frame(self.user_interface, relief="solid", borderwidth=1)
+        self.control_window = tk.Frame(self.user_interface, relief="solid", borderwidth=1)
         self.master_paned_window.add(self.control_window)
 
         self.control_window1 = ttk.Frame(self.control_window, relief="solid", borderwidth=1)
         self.control_window1.pack()
         # create block for controller
-        self.controller_window = tkinter.LabelFrame(self.control_window1, text="controller")
+        self.controller_window = tk.LabelFrame(self.control_window1, text="controller")
         self.controller_window.grid(column=0, row=0)
 
         # controller in a dict
         self.controller: Dict[str, base_controller.controller] = {}
 
-        self.digital_controller_window = tkinter.LabelFrame(self.controller_window, text="digital", labelanchor="n")
+        self.digital_controller_window = tk.LabelFrame(self.controller_window, text="digital", labelanchor="n")
         self.digital_controller_window.grid(column=0, row=0)
         self.digital_controller = controller.digital_controller(self.log.getChild("dc"), self.configs)
         self.controller["dc"] = self.digital_controller
         self.controller["dc"].set_default_values()
         scs_gui(self.digital_controller_window, self.digital_controller)
 
-        self.multi_purpose_controller_window = tkinter.LabelFrame(
+        self.multi_purpose_controller_window = tk.LabelFrame(
             self.controller_window, text="multi purpose", labelanchor="n"
         )
         self.multi_purpose_controller_window.grid(column=1, row=0)
@@ -390,7 +400,7 @@ class PLC(tkinter.Frame):
         # translation stage controller
         self.translation_stage_device = self.configs.values.get("translation stage controller", "devicename")
         if self.translation_stage_device != "-1":
-            self.translation_stage_controller_window = tkinter.LabelFrame(
+            self.translation_stage_controller_window = tk.LabelFrame(
                 self.controller_window, text="translation stage", labelanchor="n"
             )
             self.translation_stage_controller_window.grid(column=3, row=0)
@@ -419,14 +429,14 @@ class PLC(tkinter.Frame):
             config=self.configs, _log=self.log.getChild("rfgc")
         )
         self.controller["rfgc"] = self.rf_generator_controller
-        self.rf_generator_window = tkinter.Frame(self.control_window, relief="solid")
+        self.rf_generator_window = tk.Frame(self.control_window, relief="solid")
         self.rf_generator_window.pack()
         self.rf_generator = rf_generator.rf_generator_gui(
             self.configs, self.rf_generator_window, self.controller["rfgc"], self.log.getChild("rfgg")
         )
 
         # create block for diagnostic/particles
-        self.diagnostic_particles_window = tkinter.LabelFrame(self.control_window, text="Diagnostics/Particles")
+        self.diagnostic_particles_window = tk.LabelFrame(self.control_window, text="Diagnostics/Particles")
         self.diagnostic_particles_window.pack()
         self.diagnostic_particles = diagnostic_particles.diagnostic_particles(
             config=self.configs,
@@ -456,47 +466,47 @@ class PLC(tkinter.Frame):
             )
 
         # create debug area
-        self.debugtext = tkinter.StringVar()
+        self.debugtext = tk.StringVar()
         self.create_debug_area()
 
         # setpoints
         self.setpoints_choose = None
         self.info_area_setpoints: Dict[str, Any] = dict()
-        self.info_area_setpoints["frame"] = tkinter.Frame(self.info_area, relief="solid", borderwidth=1)
+        self.info_area_setpoints["frame"] = tk.Frame(self.info_area, relief="solid", borderwidth=1)
         # self.info_area_setpoints['frame'].grid(column=0,row=0)
-        self.info_area_setpoints["frame"].pack(side=tkinter.LEFT)
+        self.info_area_setpoints["frame"].pack(side=tk.LEFT)
         pw = self.info_area_setpoints["frame"]
-        self.info_area_setpoints["previous setpoint"] = tkinter.Button(
+        self.info_area_setpoints["previous setpoint"] = tk.Button(
             pw,
             text="previous",
             command=self.choose_previous_setpoint,
             padx=self.padx,
             pady=self.pady,
-            state=tkinter.DISABLED,
+            state=tk.DISABLED,
         )
         self.info_area_setpoints["previous setpoint"].grid(column=0, row=0)
-        self.info_area_setpoints["setpoint val"] = tkinter.StringVar()
-        self.info_area_setpoints["setpoint"] = tkinter.Label(
+        self.info_area_setpoints["setpoint val"] = tk.StringVar()
+        self.info_area_setpoints["setpoint"] = tk.Label(
             pw, textvariable=self.info_area_setpoints["setpoint val"], height=1, width=80
         )
         self.info_area_setpoints["setpoint"].grid(column=1, row=0)
         self.info_area_setpoints["setpoint val"].set("- none available -")
-        self.info_area_setpoints["next setpoint"] = tkinter.Button(
+        self.info_area_setpoints["next setpoint"] = tk.Button(
             pw,
             text="next",
             command=self.choose_next_setpoint,
             padx=self.padx,
             pady=self.pady,
-            state=tkinter.DISABLED,
+            state=tk.DISABLED,
         )
         self.info_area_setpoints["next setpoint"].grid(column=2, row=0)
-        self.info_area_setpoints["set setpoint"] = tkinter.Button(
+        self.info_area_setpoints["set setpoint"] = tk.Button(
             pw,
             text="set",
             command=self.set_setpoints,
             padx=self.padx,
             pady=self.pady,
-            state=tkinter.DISABLED,
+            state=tk.DISABLED,
         )
         self.info_area_setpoints["set setpoint"].grid(column=3, row=0)
 
@@ -622,15 +632,15 @@ class PLC(tkinter.Frame):
     def create_debug_area(self):
         if int(self.debug) == 1:
             self.log.debug("create debug area")
-            self.debug_infos = tkinter.Frame(self.main_window, relief="solid", borderwidth=1)
+            self.debug_infos = tk.Frame(self.main_window, relief="solid", borderwidth=1)
             self.debug = 1
-            self.debug_infos_message = tkinter.Label(
+            self.debug_infos_message = tk.Label(
                 self.debug_infos,
                 textvariable=self.debugtext,
                 height=self.configs.values.getint("gui", "debug_area_height"),
                 width=self.configs.values.getint("gui", "debug_area_width"),
                 anchor="sw",
-                justify=tkinter.LEFT,
+                justify=tk.LEFT,
             )
             # self.debugtext.set("")
             self.debug_infos_message.pack()
@@ -758,7 +768,7 @@ class PLC(tkinter.Frame):
         self.cameras_movie_labels = []
         for i in range(self.configs.number_of_cameras):
             self.cameras_imgs += [PIL.ImageTk.PhotoImage("L", (self.camera_picture_x, self.camera_picture_x))]
-            self.cameras_movie_labels += [tkinter.Label(pw, image=self.cameras_imgs[i])]
+            self.cameras_movie_labels += [tk.Label(pw, image=self.cameras_imgs[i])]
             self.cameras_movie_labels[i].pack()
 
     def grabber_record(self, event=None):
@@ -805,7 +815,7 @@ class PLC(tkinter.Frame):
 
     def update(self) -> None:
         """update every dynamic read values"""
-        # self.gas_system.update()
+        self.gs_gui.update()
         # self.diagnostic_particles.update()
         # load
         (load1, load2, load3) = os.getloadavg()
@@ -874,9 +884,9 @@ class PLC(tkinter.Frame):
             self.log.debug("found %d sections" % len(self.setpoints.sections()))
             self.choose_setpoint(i=0)
             self.load_setpoints()
-            self.info_area_setpoints["previous setpoint"].configure(state=tkinter.NORMAL)
-            self.info_area_setpoints["next setpoint"].configure(state=tkinter.NORMAL)
-            self.info_area_setpoints["set setpoint"].configure(state=tkinter.NORMAL)
+            self.info_area_setpoints["previous setpoint"].configure(state=tk.NORMAL)
+            self.info_area_setpoints["next setpoint"].configure(state=tk.NORMAL)
+            self.info_area_setpoints["set setpoint"].configure(state=tk.NORMAL)
 
     def load_setpoints(self):
         if self.setpoints_choose is not None:

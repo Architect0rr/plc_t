@@ -7,6 +7,7 @@ __digital_controller_server_version__ = __digital_controller_server_date__
 
 import os
 import re
+from socketserver import BaseServer
 import sys
 import csv
 import time
@@ -14,6 +15,7 @@ import errno
 import random
 import signal
 import socket
+import pickle
 import struct
 import tempfile
 import argparse
@@ -22,10 +24,11 @@ import socketserver
 import logging
 import logging.handlers
 from pathlib import Path
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Tuple
 
 from plc.plc_tools import server_base
-from plc.plc_tools import plc_socket_communication
+
+# from plc.plc_tools.plc_socket_communication import socket_communication
 from plc.plc_tools.plclogclasses import QueuedWatchedFileHandler
 
 
@@ -250,31 +253,32 @@ class controller_class(server_base.controller_class):
     def set_setpoint_int(self, _v: str):
         v = _v.encode("utf-8")
         self.setpointlock.acquire()  # lock to set
-        self.setpoint["A"] = self.int2boolarray(struct.unpack("B", v[0])[0])  # type: ignore
-        self.setpoint["B"] = self.int2boolarray(struct.unpack("B", v[1])[0])  # type: ignore
-        self.setpoint["C"] = self.int2boolarray(struct.unpack("B", v[2])[0])  # type: ignore
-        self.setpoint["D"] = self.int2boolarray(struct.unpack("B", v[3])[0])  # type: ignore
+        self.setpoint["A"] = self.int2boolarray(struct.unpack("B", v[0:1])[0])
+        self.setpoint["B"] = self.int2boolarray(struct.unpack("B", v[1:2])[0])
+        self.setpoint["C"] = self.int2boolarray(struct.unpack("B", v[2:3])[0])
+        self.setpoint["D"] = self.int2boolarray(struct.unpack("B", v[3:4])[0])
         self.setpointlock.release()  # release the lock
 
 
 controller: controller_class
 
 
-class ThreadedTCPRequestHandler(
-    socketserver.BaseRequestHandler, plc_socket_communication.tools_for_socket_communication
-):
+class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
+    def __init__(self, request, client_address, server: BaseServer) -> None:
+        super().__init__(request, client_address, server)
+
     def handle(self) -> None:
         global controller
         self.send_data_to_socket_lock = threading.Lock()
         bufsize = 4096  # read/receive Bytes at once
         controller.log.debug(f"Starting connection to {self.client_address[0],}:{self.client_address[1]}")
-        data = ""
+        data = b""
         while controller.running:
             self.request.settimeout(1)
             # get some data
-            d = ""
+            d = b""
             try:
-                d = bytes(self.request.recv(bufsize)).decode("utf-8")
+                d = bytes(self.request.recv(bufsize))
                 if not d:
                     break
             except Exception:
@@ -288,7 +292,7 @@ class ThreadedTCPRequestHandler(
                 found_something = False
             while found_something:
                 found_something = False
-                if (len(data) >= 2) and (data[0].lower() == "p"):
+                if (len(data) >= 2) and (data[0:1].lower() == "p"):
                     # packed data; all settings at once
                     found_something = True
                     [data, v] = self.receive_data_from_socket2(self.request, bufsize, data[2:])
@@ -303,11 +307,11 @@ class ThreadedTCPRequestHandler(
                     found_something = True
                     data = data[6:]
                     response.extend(self.create_send_format(controller.get_actualvalue()))
-                elif (len(data) >= 5) and (data[0].lower() == "s"):
+                elif (len(data) >= 5) and (data[0:1].lower() == "s"):
                     found_something = True
-                    controller.set_setpoint_int(data[1:5])
+                    controller.set_setpoint_int(data[1:5].decode("utf-8"))
                     data = data[5:]
-                elif (len(data) >= 9) and (data[0].lower() == "a"):
+                elif (len(data) >= 9) and (data[0:1].lower() == "a"):
                     # A00000000
                     found_something = True
                     for i in range(8):
@@ -316,7 +320,7 @@ class ThreadedTCPRequestHandler(
                         else:
                             controller.set_setpoint_human_readable(port="A", channel=i, v=False)
                     data = data[9:]
-                elif (len(data) >= 9) and (data[0].lower() == "b"):
+                elif (len(data) >= 9) and (data[0:1].lower() == "b"):
                     # B00000000
                     found_something = True
                     for i in range(8):
@@ -325,7 +329,7 @@ class ThreadedTCPRequestHandler(
                         else:
                             controller.set_setpoint_human_readable("B", i, False)
                     data = data[9:]
-                elif (len(data) >= 9) and (data[0].lower() == "c"):
+                elif (len(data) >= 9) and (data[0:1].lower() == "c"):
                     # C00000000
                     found_something = True
                     for i in range(8):
@@ -334,7 +338,7 @@ class ThreadedTCPRequestHandler(
                         else:
                             controller.set_setpoint_human_readable("C", i, False)
                     data = data[9:]
-                elif (len(data) >= 9) and (data[0].lower() == "d"):
+                elif (len(data) >= 9) and (data[0:1].lower() == "d"):
                     # D00000000
                     found_something = True
                     for i in range(8):
@@ -399,6 +403,23 @@ class ThreadedTCPRequestHandler(
             if sent == 0:
                 raise RuntimeError("socket connection broken")
             totalsent = totalsent + sent
+
+    def receive_data_from_socket2(self, s: socket.socket, bufsize: int = 4096, data: bytes = b"") -> Tuple[bytes, Any]:
+        expected_length = 4
+        while len(data) < expected_length:
+            data += s.recv(bufsize)
+        expected_length += struct.unpack("!i", (data[0:4]))[0]
+        while len(data) < expected_length:
+            data += s.recv(bufsize)
+        v = pickle.loads((data[4:expected_length]))
+        data = data[expected_length:]
+        return (data, v)
+
+    def create_send_format(self, data: Any) -> bytes:
+        s: bytes = pickle.dumps(data, -1)
+        asd = bytearray(struct.pack(b"!i", len(s)))
+        asd.extend(s)
+        return bytes(asd)
 
     def finish(self):
         global controller
