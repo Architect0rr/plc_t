@@ -1,7 +1,28 @@
-"""gui for controlling gas system
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+#
+# Copyright (C) 2012-2013 Daniel Mohr
+#
+# Copyright (C) 2023 Perevoshchikov Egor
+#
+# This file is part of PlasmaLabControl.
+#
+# PlasmaLabControl is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# PlasmaLabControl is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with PlasmaLabControl.  If not, see <http://www.gnu.org/licenses/>.
 
-Author: Daniel Mohr
-Date: 2013-01-26
+
+"""
+gui for controlling gas system
 """
 
 import logging
@@ -172,10 +193,8 @@ class gs:
 
 
 class gas_system(tkinter.ttk.LabelFrame):
-    """gui for gas system control
-
-    Author: Daniel Mohr
-    Date: 2012-11-27
+    """
+    gui for gas system control
     """
 
     def __init__(
@@ -193,9 +212,6 @@ class gas_system(tkinter.ttk.LabelFrame):
                 the TK-GUI will be created in the parent pw with Tkinter
            debugprint : function
                         function to call for print debug information
-
-        Author: Daniel Mohr
-        Date: 2012-08-29
         """
         super().__init__(master=_root, text="GAS SYS")
         self.backend = _backend
@@ -389,3 +405,7 @@ class gas_system(tkinter.ttk.LabelFrame):
             self.mass_flow_checkbutton.configure(state=tkinter.DISABLED)
             self.mass_flow_set_flow_rate_entry.configure(state=tkinter.DISABLED)
             self.mass_flow_set_flow_rate_button.configure(state=tkinter.DISABLED)
+
+
+if __name__ == "__main__":
+    pass

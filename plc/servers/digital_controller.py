@@ -1,8 +1,27 @@
 #!/usr/bin/env python3
-# Author: Daniel Mohr
-# Date: 2013-05-13, 2014-07-22
+# -*- coding: utf-8 -*-
+#
+# Copyright (C) 2012-2014 Daniel Mohr
+#
+# Copyright (C) 2023 Perevoshchikov Egor
+#
+# This file is part of PlasmaLabControl.
+#
+# PlasmaLabControl is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# PlasmaLabControl is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with PlasmaLabControl.  If not, see <http://www.gnu.org/licenses/>.
 
-__digital_controller_server_date__ = "2014-07-22"
+
+__digital_controller_server_date__ = "2023-10-23"
 __digital_controller_server_version__ = __digital_controller_server_date__
 
 import os
@@ -24,7 +43,7 @@ import socketserver
 import logging
 import logging.handlers
 from pathlib import Path
-from typing import Dict, Any, List, Tuple
+from typing import Dict, Any, List, Tuple, NoReturn
 
 from plc.plc_tools import server_base
 
@@ -33,15 +52,13 @@ from plc.plc_tools.plclogclasses import QueuedWatchedFileHandler
 
 
 class controller_class(server_base.controller_class):
-    """controller_class
+    """
+    controller_class
 
     This class is for communicating to a device. This means
     setvalues are required by the user and will be set in some
     intervals. The actualvalues are the actualvalues which were
     set before.
-
-    Author: Daniel Mohr
-    Date: 2012-09-30
     """
 
     def myinit(self, A: str, B: str, C: str, D: str, simulate: bool = False) -> None:
@@ -201,9 +218,10 @@ class controller_class(server_base.controller_class):
         self.setpointlock.release()  # release the lock
         self.shake_dispenser_lock.release()  # release the lock
 
-    def wrd(self, data: str) -> int | None:
-        data_by = data.encode() if data is not None else b""
-        return self.device.write(data_by)
+    def __write(self, data: str) -> int:
+        data_by = data.encode("utf-8")
+        rt = self.device.write(data_by)
+        return rt if rt is not None else 0
 
     def write_to_device(self, s: List[str]) -> None:
         if len(s) == 0:
@@ -224,7 +242,7 @@ class controller_class(server_base.controller_class):
             self.device.open()
             self.deviceopen = True
         for i in range(len(s)):
-            self.wrd(s[i])
+            self.__write(s[i])
             self.device.flush()
             r = self.device.read(2)
             t = time.time()
@@ -273,18 +291,19 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
         bufsize = 4096  # read/receive Bytes at once
         controller.log.debug(f"Starting connection to {self.client_address[0],}:{self.client_address[1]}")
         data = b""
+        self.request: socket.socket
         while controller.running:
             self.request.settimeout(1)
             # get some data
             d = b""
             try:
-                d = bytes(self.request.recv(bufsize))
+                d = self.request.recv(bufsize)
                 if not d:
                     break
             except Exception:
-                pass
+                controller.log.exception("Error in receiving data from plc")
             # analyse data
-            response: bytearray = bytearray()
+            # response: bytearray = bytearray()
             if len(d) > 0:
                 data += d
                 found_something = True
@@ -292,26 +311,26 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                 found_something = False
             while found_something:
                 found_something = False
-                if (len(data) >= 2) and (data[0:1].lower() == "p"):
+                if (len(data) >= 2) and (data[0:1].lower() == b"p"):
                     # packed data; all settings at once
                     found_something = True
                     [data, v] = self.receive_data_from_socket2(self.request, bufsize, data[2:])
                     controller.set_setpoint(s=v)
-                elif (len(data) >= 4) and (data[0:4].lower() == "!w2d"):
+                elif (len(data) >= 4) and (data[0:4].lower() == b"!w2d"):
                     # trigger writing setvalues to the external device
                     found_something = True
                     controller.set_actualvalue_to_the_device()
                     data = data[4:]
-                elif (len(data) >= 6) and (data[0:6].lower() == "getact"):
+                elif (len(data) >= 6) and (data[0:6].lower() == b"getact"):
                     # sends the actual values back
                     found_something = True
                     data = data[6:]
-                    response.extend(self.create_send_format(controller.get_actualvalue()))
-                elif (len(data) >= 5) and (data[0:1].lower() == "s"):
+                    self.send_data_to_socket(self.request, self.create_send_format(controller.get_actualvalue()))
+                elif (len(data) >= 5) and (data[0:1].lower() == b"s"):
                     found_something = True
                     controller.set_setpoint_int(data[1:5].decode("utf-8"))
                     data = data[5:]
-                elif (len(data) >= 9) and (data[0:1].lower() == "a"):
+                elif (len(data) >= 9) and (data[0:1].lower() == b"a"):
                     # A00000000
                     found_something = True
                     for i in range(8):
@@ -320,7 +339,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                         else:
                             controller.set_setpoint_human_readable(port="A", channel=i, v=False)
                     data = data[9:]
-                elif (len(data) >= 9) and (data[0:1].lower() == "b"):
+                elif (len(data) >= 9) and (data[0:1].lower() == b"b"):
                     # B00000000
                     found_something = True
                     for i in range(8):
@@ -329,7 +348,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                         else:
                             controller.set_setpoint_human_readable("B", i, False)
                     data = data[9:]
-                elif (len(data) >= 9) and (data[0:1].lower() == "c"):
+                elif (len(data) >= 9) and (data[0:1].lower() == b"c"):
                     # C00000000
                     found_something = True
                     for i in range(8):
@@ -338,7 +357,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                         else:
                             controller.set_setpoint_human_readable("C", i, False)
                     data = data[9:]
-                elif (len(data) >= 9) and (data[0:1].lower() == "d"):
+                elif (len(data) >= 9) and (data[0:1].lower() == b"d"):
                     # D00000000
                     found_something = True
                     for i in range(8):
@@ -347,7 +366,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                         else:
                             controller.set_setpoint_human_readable("D", i, False)
                     data = data[9:]
-                elif (len(data) >= 20) and (data[0:10].lower() == "_dispenser"):
+                elif (len(data) >= 20) and (data[0:10].lower() == b"_dispenser"):
                     found_something = True
                     # _dispenser00111222
                     controller.set_setpoint_human_readable("dispenser", "shake", False)
@@ -357,7 +376,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                     controller.set_setpoint_human_readable("dispenser", "ton", bool(int(data[14:17]) / 1000))
                     controller.set_setpoint_human_readable("dispenser", "toff", bool(int(data[17:20]) / 1000))
                     data = data[20:]
-                elif (len(data) >= 10) and (data[0:10].lower() == "!dispenser"):
+                elif (len(data) >= 10) and (data[0:10].lower() == b"!dispenser"):
                     # !dispenser
                     # do the shake
                     found_something = True
@@ -370,30 +389,30 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                     ):
                         controller.set_setpoint_human_readable("dispenser", "shake", True)
                     data = data[10:]
-                elif (len(data) >= 12) and (data[0:9].lower() == "timedelay"):
+                elif (len(data) >= 12) and (data[0:9].lower() == b"timedelay"):
                     found_something = True
                     v = int(data[9:12])
                     controller.log.debug("set timedelay/updatedelay to %d milliseconds" % v)
                     controller.updatedelay = v / 1000.0
                     data = data[12:]
-                elif (len(data) >= 4) and (data[0:4].lower() == "quit"):
+                elif (len(data) >= 4) and (data[0:4].lower() == b"quit"):
                     found_something = True
-                    response.extend(b"quitting")
+                    self.send_data_to_socket(self.request, b"quitting")
                     controller.log.info("Quitting")
                     data = data[4:]
                     controller.running = False
                     self.server.shutdown()
-                elif (len(data) >= 7) and (data[0:7].lower() == "version"):
+                elif (len(data) >= 7) and (data[0:7].lower() == b"version"):
                     found_something = True
                     a = f"digital_controller_server Version: {__digital_controller_server_version__}"
-                    response.extend(a.encode("utf-8"))
+                    self.send_data_to_socket(self.request, a.encode("utf-8"))
                     controller.log.debug(a)
                     data = data[7:]
                 if len(data) == 0:
                     break
-            time.sleep(random.randint(1, 100) / 1000.0)
-            if len(response) > 0:
-                self.send_data_to_socket(self.request, response)
+            # time.sleep(random.randint(1, 100) / 1000.0)
+            # if len(response) > 0:
+            #     self.send_data_to_socket(self.request, response)
 
     def send_data_to_socket(self, s: socket.socket, msg: bytes) -> None:
         totalsent = 0
@@ -427,14 +446,14 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
         try:
             self.request.shutdown(socket.SHUT_RDWR)
         except Exception:
-            pass
+            controller.log.exception("Bad socket close")
 
 
 class ThreadedTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
     pass
 
 
-def main():
+def main() -> NoReturn:
     global controller
     # command line parameter
     help = ""
@@ -462,7 +481,7 @@ def main():
     help += "  version : response the version of the server\n"
     parser = argparse.ArgumentParser(
         description="digital_controller_server is a socket server to control the digital controller on an serial interface. On start every settings are assumed to 0 or the given values and set to the device. A friendly kill (SIGTERM) should be possible.",
-        epilog="Author: Daniel Mohr\nDate: %s\nLicense: GNU GENERAL PUBLIC LICENSE, Version 3, 29 June 2007\n\n%s"
+        epilog="Author: Daniel Mohr, Egor Perevoshchikov\nDate: %s\nLicense: GNU GENERAL PUBLIC LICENSE, Version 3, 29 June 2007\n\n%s"
         % (__digital_controller_server_date__, help),
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -708,7 +727,6 @@ def main():
             if r:
                 log.error("Other process is running. Exiting.")
                 sys.exit(1)
-    f = open(args.runfile, "w")
     with runfile.open("w") as f:
         writer = csv.writer(f)
         for i in range(len(runinfo)):
@@ -751,27 +769,32 @@ def main():
         log.exception(f"Probably port {args.port} is in use already")
         raise
 
+    ip, port = server.server_address
+    log.info("listen at %s:%d" % (ip, port))
+
     def shutdown(signum, frame):
         global controller
         controller.log.info(f"Got signal {signum}")
         controller.log.debug(f"Number of threads: {threading.activeCount()}")
         controller.log.info("Will exit the program")
+        server.shutdown()
         controller.shutdown()
 
     signal.signal(signal.SIGTERM, shutdown)
+    signal.signal(signal.SIGHUP, shutdown)
 
-    ip, port = server.server_address
-    log.info("listen at %s:%d" % (ip, port))
     # start a thread with the server -- that thread will then start one
     # more thread for each request
-    server_thread = threading.Thread(target=server.serve_forever)
-    # Exit the server thread when the main thread terminates
-    server_thread.daemon = True
-    server_thread.start()
-    while controller.running:
-        time.sleep(1)  # it takes at least 1 second to exit
+    server.serve_forever()
+    # server_thread = threading.Thread(target=server.serve_forever)
+    # # Exit the server thread when the main thread terminates
+    # server_thread.daemon = True
+    # server_thread.start()
+
+    # while controller.running:
+    #     time.sleep(1)  # it takes at least 1 second to exit
     log.debug("exit")
-    time.sleep(0.001)
+    # time.sleep(0.001)
     fhd.flush()
     fhd.close()
     fh.flush()
@@ -783,4 +806,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

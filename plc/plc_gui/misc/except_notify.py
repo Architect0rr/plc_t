@@ -56,3 +56,7 @@ def show(exc: Exception, context: str | None = None) -> None:
         proccesses_to_join.append(p)
     else:
         print(bcolors.bold_red + "Cannot notify you" + bcolors.reset, file=sys.stderr)
+
+
+if __name__ == "__main__":
+    pass

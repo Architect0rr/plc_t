@@ -41,6 +41,7 @@ import tkinter.messagebox
 import tkinter.filedialog
 from tkinter import ttk
 
+
 # from . import camera
 from . import gas_system
 from . import controller
@@ -53,44 +54,31 @@ from . import diagnostic_particles
 from .plcclientserverclass import scs_gui
 from ..plc_tools import plclogclasses
 from . import base_controller
+from .misc.splash import PassiveSplash, Splasher
 
 # from .misc import except_notify
 
 
-class Splash(tk.Toplevel):
-    def __init__(self, parent):
-        tk.Toplevel.__init__(self, parent)
-        self.title("Splash")
-
-        ## required to make window show before the program gets to the mainloop
-        self.update()
-
-
-class PLC(tk.Frame):
+class PLC(tk.Tk):
     """
     class for the GUI for plc
     """
 
     @classmethod
     def main(cls, log: logging.Logger, system_conffile: Path, conffile: Path) -> NoReturn:
-        # tk.NoDefaultRoot()
-        root = tk.Tk()
-        # app.grid(sticky=tcs.NSEW)
-        # root.grid_columnconfigure(0, weight=1)
-        # root.grid_rowconfigure(0, weight=1)
-        root.resizable(True, True)
-
-        app = cls(root, log, system_conffile, conffile)
-        root.after(app.update_intervall, func=app.update)  # call update every ... milliseconds
-        root.after(app.check_buttons_intervall, func=app.check_buttons)  # call update every ... milliseconds
-        root.mainloop()
+        app = cls(log, system_conffile, conffile)
+        app.mainloop()
         app.exit()
 
-    def __init__(self, root: tk.Tk, _log: logging.Logger, system_conffile: Path, conffile: Path) -> None:
+    def __init__(self, _log: logging.Logger, system_conffile: Path, conffile: Path) -> None:
         """
         GUI initialization
         """
-        super().__init__(root)
+        super().__init__()
+        self.resizable(True, True)
+        self.withdraw()
+        self.passivesplash = PassiveSplash(self)
+        self.splaher = Splasher(self)
         # set variables
         # set default values
         self.log = _log
@@ -117,11 +105,11 @@ class PLC(tk.Frame):
         self.debug = 1  # self.args.debug
 
         # main code
-        self.main_window = root  # tk.Tk()
+        self.main_window = self  # tk.Tk()
         self.screenx = self.main_window.winfo_screenwidth()
         self.screeny = self.main_window.winfo_screenheight()
         # self.main_window.title(f"plc - PlasmaLabControl ({self.conffile.as_posix()})")
-        self.main_window.title("plc - PlasmaLabControl (development 01281121)")
+        self.main_window.title("plc - PlasmaLabControl (development 20411023)")
 
         # ########################
         # ####### M E N U ########
@@ -374,7 +362,8 @@ class PLC(tk.Frame):
         self.digital_controller = controller.digital_controller(self.log.getChild("dc"), self.configs)
         self.controller["dc"] = self.digital_controller
         self.controller["dc"].set_default_values()
-        scs_gui(self.digital_controller_window, self.digital_controller)
+        self.dc_gui = scs_gui(self.digital_controller_window, self.digital_controller, self.splaher)
+        self.dc_gui.pack()
 
         self.multi_purpose_controller_window = tk.LabelFrame(
             self.controller_window, text="multi purpose", labelanchor="n"
@@ -383,7 +372,8 @@ class PLC(tk.Frame):
         self.multi_purpose_controller = controller.multi_purpose_controller(self.log.getChild("mpc"), self.configs)
         self.controller["mpc"] = self.multi_purpose_controller
         self.controller["mpc"].set_default_values()
-        scs_gui(self.multi_purpose_controller_window, self.multi_purpose_controller)
+        self.mpc_gui = scs_gui(self.multi_purpose_controller_window, self.multi_purpose_controller, self.splaher)
+        self.mpc_gui.pack()
 
         # electrode motion controller
         self.electrode_motion_controller_device = self.configs.values.get("electrode motion controller", "devicename")
@@ -564,6 +554,12 @@ class PLC(tk.Frame):
                 self.acceleration_sensor[i].start_request()
         # start environment_sensor_5 on startup
         self.start_environment_sensor_5()
+
+        self.after(self.update_intervall, func=self.update)  # call update every ... milliseconds
+        self.after(self.check_buttons_intervall, func=self.check_buttons)  # call update every ... milliseconds
+
+        self.passivesplash.destroy()
+        self.deiconify()
 
     def exit(self) -> NoReturn:
         self.log.debug("Exit called")
@@ -820,6 +816,7 @@ class PLC(tk.Frame):
         # load
         (load1, load2, load3) = os.getloadavg()
         self.info_area_load_val.set("load=(%2.2f,%2.2f,%2.2f)" % (load1, load2, load3))
+
         # loop:
         self.main_window.after(self.update_intervall, func=self.update)  # call update every ... milliseconds
 
@@ -978,3 +975,7 @@ class PLC(tk.Frame):
             if i != self.setpoints_choose:
                 self.info_area_setpoints["next setpoint"].flash()
                 self.choose_setpoint(i=i)
+
+
+if __name__ == "__main__":
+    pass

@@ -1,7 +1,27 @@
-"""gui for Electrode Motion
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+#
+# Copyright (C) 2012-2013 Daniel Mohr
+#
+# Copyright (C) 2023 Perevoshchikov Egor
+#
+# This file is part of PlasmaLabControl.
+#
+# PlasmaLabControl is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# PlasmaLabControl is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with PlasmaLabControl.  If not, see <http://www.gnu.org/licenses/>.
 
-Author: Daniel Mohr
-Date: 2013-01-26
+"""
+gui for Electrode Motion
 """
 
 import logging
@@ -66,10 +86,8 @@ class sample_frame(ttk.LabelFrame):
 
 
 class electrode_motion(ttk.LabelFrame):
-    """gui for Electrode Motion
-
-    Author: Daniel Mohr
-    Date: 2012-08-29
+    """
+    gui for Electrode Motion
     """
 
     def __init__(
@@ -87,9 +105,6 @@ class electrode_motion(ttk.LabelFrame):
                 the TK-GUI will be created in the parent pw with Tkinter
            debugprint : function
                         function to call for print debug information
-
-        Author: Daniel Mohr
-        Date: 2012-08-27
         """
         super().__init__(_root, text="Electrode motion")
         self.log = _log
@@ -170,3 +185,7 @@ class electrode_motion(ttk.LabelFrame):
 
     def upper_electrode_move(self, steps: int = 0) -> None:
         self.controller.upper_electrode_move(steps)
+
+
+if __name__ == "__main__":
+    pass

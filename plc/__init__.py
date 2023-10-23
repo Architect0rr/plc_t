@@ -21,3 +21,6 @@
 from . import plc
 from . import clients
 from . import servers
+
+if __name__ == "__main__":
+    pass

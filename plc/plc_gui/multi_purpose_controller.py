@@ -1,7 +1,27 @@
-"""class for multi purpose controller (blue box)
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+#
+# Copyright (C) 2012-2013 Daniel Mohr
+#
+# Copyright (C) 2023 Perevoshchikov Egor
+#
+# This file is part of PlasmaLabControl.
+#
+# PlasmaLabControl is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# PlasmaLabControl is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with PlasmaLabControl.  If not, see <http://www.gnu.org/licenses/>.
 
-Author: Daniel Mohr
-Date: 2013-05-13
+"""
+class for multi purpose controller (blue box)
 """
 
 import logging
@@ -13,10 +33,8 @@ from .base_controller import controller
 
 
 class multi_purpose_controller(socket_communication_class, controller):
-    """class for multi purpose controller (blue box)
-
-    Author: Daniel Mohr
-    Date: 2013-05-13
+    """
+    class for multi purpose controller (blue box)
     """
 
     def __init__(self, log: logging.Logger, config: read_config_file, bufsize: int = 4096):
@@ -54,9 +72,6 @@ class multi_purpose_controller(socket_communication_class, controller):
         set setpoint[...] to 0 or False
         if connected to real device, get actualvalue[...] from it
         otherwise set actualvalue[...] to  0 or False
-
-        Author: Daniel Mohr
-        Date: 2012-11-27
         """
         port = "DO"
         for channel in range(4):
@@ -103,3 +118,7 @@ class multi_purpose_controller(socket_communication_class, controller):
         port = "DAC"
         for channel in range(4):
             self.setpoint[port][channel] = self.actualvalue[port][channel]
+
+
+if __name__ == "__main__":
+    pass

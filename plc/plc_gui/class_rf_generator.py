@@ -565,3 +565,7 @@ class rfg_gui(tkinter.ttk.LabelFrame):
         for i, chan in enumerate(self.channels):
             if chan.sc(current):
                 self.channels[i].sc(current)
+
+
+if __name__ == "__main__":
+    pass

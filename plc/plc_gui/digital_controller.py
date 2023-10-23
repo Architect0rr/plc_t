@@ -86,3 +86,7 @@ class digital_controller(socket_communication_class, controller):
         for port in self.ports:
             for channel in range(8):
                 self.setpoint[port][channel] = self.actualvalue[port][channel]
+
+
+if __name__ == "__main__":
+    pass

@@ -1,7 +1,27 @@
-"""gui for RF-Generator
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+#
+# Copyright (C) 2012-2013 Daniel Mohr
+#
+# Copyright (C) 2023 Perevoshchikov Egor
+#
+# This file is part of PlasmaLabControl.
+#
+# PlasmaLabControl is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# PlasmaLabControl is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with PlasmaLabControl.  If not, see <http://www.gnu.org/licenses/>.
 
-Author: Daniel Mohr
-Date: 2013-04-22
+"""
+gui for RF-Generator
 """
 
 import configparser
@@ -23,10 +43,8 @@ from .class_rf_generator import rfg_gui
 
 
 class rf_generator_gui:
-    """gui for rf_generator
-
-    Author: Daniel Mohr
-    Date: 2012-08-26
+    """
+    gui for rf_generator
     """
 
     def __init__(
@@ -45,9 +63,6 @@ class rf_generator_gui:
                 the TK-GUI will be created in the parent pw with Tkinter
            debugprint : function
                         function to call for print debug information
-
-        Author: Daniel Mohr
-        Date: 2012-09-07
         """
         self.log = _log
         self.config = config
@@ -527,3 +542,7 @@ class rf_generator_gui:
     #         #             self.generator[g].channel[i].choose_checkbutton.configure(
     #         #                 state=tkinter.DISABLED
     #         #             )
+
+
+if __name__ == "__main__":
+    pass

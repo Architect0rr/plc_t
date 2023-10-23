@@ -21,3 +21,6 @@
 from . import plc
 from . import read_config_file
 
+
+if __name__ == "__main__":
+    pass

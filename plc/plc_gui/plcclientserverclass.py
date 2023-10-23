@@ -24,13 +24,13 @@
 client server communication classes for plc
 """
 
-import signal
 import time
 import shlex
 import socket
 import logging
 import threading
 import subprocess
+from queue import Queue
 import tkinter
 import tkinter.ttk
 from abc import abstractmethod
@@ -39,6 +39,7 @@ import functools
 
 from .read_config_file import read_config_file
 from ..plc_tools.plc_socket_communication import socket_communication, socketlock
+from .misc.splash import Splasher
 
 T = TypeVar("T")
 
@@ -50,7 +51,7 @@ def if_connect(fn: Callable[..., bool]):
         if self.connected:
             return fn(*args, **kwargs)
         else:
-            self.log.error("Not connected")
+            self.log.warning("Not connected")
             return False
 
     return wrapper
@@ -80,6 +81,18 @@ def general_lock(fn: Callable[..., T]):  # type: ignore
     return wrapper
 
 
+def ee_report(fn: Callable[..., T]):  # type: ignore
+    @functools.wraps(fn)
+    def wrapper(*args, **kwargs) -> T:
+        self: socket_communication_class = args[0]
+        self.log.warning("Entered")
+        fr = fn(*args, **kwargs)
+        self.log.warning("Exited")
+        return fr
+
+    return wrapper
+
+
 class socket_communication_class(socket_communication):
     """
     base class for continued socket communication
@@ -89,6 +102,7 @@ class socket_communication_class(socket_communication):
         super().__init__()
         self.lock = threading.RLock()
         self.datalock = threading.RLock()
+        self.update_thread_lock = threading.RLock()
 
         # flags
         self.server_started: bool = False
@@ -130,7 +144,7 @@ class socket_communication_class(socket_communication):
             self.actualvalue = self.receive(self.bufsize)
             return True
         except Exception:
-            self.log.error("Could not get actualvalues from server!")
+            self.log.exception("Could not get actualvalues from server!")
             return False
 
     @if_connect
@@ -161,18 +175,13 @@ class socket_communication_class(socket_communication):
     def actualvalue2setpoint(self):
         ...
 
-    def start_request(self) -> bool:
-        self.log.debug("Controller start requested, starting backgroud thread")
-        starttimer = threading.Thread(target=self.start)
-        starttimer.daemon = True
-        starttimer.start()
+    def start_request(self, simulate: bool = False, debug: bool = True) -> bool:
+        self.log.debug("Controller start requested")
+        return self.start(simulate, debug)
 
     def stop_request(self) -> bool:
         self.log.debug("Controller stop requested")
-        self.log.debug("Starting stop thread")
-        starttimer = threading.Thread(target=self.stop)
-        starttimer.daemon = True
-        starttimer.start()
+        return self.stop()
 
     @socketlock
     @data_lock
@@ -186,12 +195,12 @@ class socket_communication_class(socket_communication):
                 self.connected = True
                 return True
             except Exception:
-                self.log.warning(f"Cannot connect to {self.myservername} at {self.ip}:{self.sport}")
+                self.log.exception(f"Cannot connect to {self.myservername} at {self.ip}:{self.sport}")
                 return False
         else:
             return False
 
-    def server_start(self) -> None:
+    def server_start(self, simulate: bool = False, debug: bool = True) -> bool:
         self.log.debug("Server was not launched, launching it")
         c: List[str] = [self.cmd]
         if self.dev != "-1":
@@ -215,32 +224,40 @@ class socket_communication_class(socket_communication):
             "-debug",
             "1",
         ]
+        if debug:
+            c += ["-debug", "1"]
+        if simulate:
+            c += ["-simulate"]
         if self.st != "-1":
             c += ["-timedelay", "%s" % self.st]
         self.log.debug(f"Executing '{shlex.join(c)}'")
-        prc_srv = subprocess.Popen(c)
+        self.prc_srv = subprocess.Popen(c)
         t0 = time.time()
-        prc_srv.poll()
+        self.prc_srv.poll()
         self.log.debug(f"Waiting for server to start for {self.server_max_start_time} secs")
-        while (prc_srv.returncode is None) and (time.time() - t0 < self.server_max_start_time):
+        while (self.prc_srv.returncode is None) and (time.time() - t0 < self.server_max_start_time):
             time.sleep(0.01)
-            prc_srv.poll()
-        prc_srv.poll()
+            self.prc_srv.poll()
 
-        if prc_srv.returncode is None:
+        time.sleep(0.5)
+        self.prc_srv.poll()
+        if self.prc_srv.returncode is None:
             self.log.debug(f"{self.myservername} seems to work!")
+            self.server_started = True
+            return True
         else:
-            if prc_srv.returncode == 0:
+            if self.prc_srv.returncode == 0:
                 self.log.debug(f"By any reason {self.myservername} returned 0")
             else:
-                self.log.warning(f"{self.myservername} was terminated with status: {prc_srv.returncode}")
-        time.sleep(0.05)
+                self.log.warning(f"{self.myservername} was terminated with status: {self.prc_srv.returncode}")
+            return False
 
     @general_lock
-    def start(self) -> bool:
+    def start(self, simulate: bool = False, debug: bool = True) -> bool:
         self.log.debug("Started")
         if not self.server_started:
-            self.server_start()
+            if not self.server_start(simulate, debug):
+                return False
         if not self.connect():
             return False
         self.log.debug("Updating values")
@@ -251,28 +268,28 @@ class socket_communication_class(socket_communication):
         self.updating_thread = threading.Thread(target=self.updatethread)
         self.updating_thread.daemon = True
         self.updating_thread.start()
+        self.log.debug("Update thread running")
         return True
 
     def updatethread(self) -> None:
-        """if necessary write values self.setpoint to device
-        and read them from device to self.actualvalue
-
-        Author: Daniel Mohr
-        Date: 2013-01-10
         """
-        while self.updatethreadrunning:
+        if necessary write values self.setpoint to device
+        and read them from device to self.actualvalue
+        """
+        while True:
+            self.update_thread_lock.acquire()
+            if not self.updatethreadrunning:
+                self.update_thread_lock.release()
+                return
+            self.update_thread_lock.release()
             self.update()
-            nextupdate = self.lastupdate + self.update_intervall
-            self.lastupdate = time.time()
             time.sleep(self.updatethreadsleeptime)
-            while self.updatethreadrunning and (time.time() < nextupdate):
-                time.sleep(self.updatethreadsleeptime)
 
     @if_connect
-    @general_lock
-    @socketlock
-    def stop(self) -> bool:
+    def __stop(self) -> bool:
+        self.update_thread_lock.acquire()
         self.updatethreadrunning = False
+        self.update_thread_lock.release()
         self.log.debug("Joining update thread")
         self.updating_thread.join()
         self.log.debug(f"Disconnecting from '{self.myservername}' {self.ip}:{self.sport}")
@@ -281,35 +298,111 @@ class socket_communication_class(socket_communication):
             self.socket.close()
         except Exception:
             self.log.warning("Bad socket close")
+        self.connected = False
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-
-        self.prc_srv.terminate()
-        time.sleep(1)
-        self.prc_srv.poll()
-        if self.prc_srv.returncode is None:
-            self.prc_srv.kill()
 
         self.log.debug("Stopped.")
         return True
 
+    def stop(self) -> bool:
+        if self.server_started:
+            self.log.debug("Server started, trying to stop it")
+            self.prc_srv.poll()
+            if self.prc_srv.returncode is None:
+                self.log.debug("Terminating server")
+                self.prc_srv.terminate()
+                # time.sleep(1)
+                self.prc_srv.poll()
+                if self.prc_srv.returncode is None:
+                    self.prc_srv.kill()
+                    self.log.debug("Server killed")
+                else:
+                    self.log.debug("Server terminated")
+            else:
+                self.log.debug(f"Server has already exited with {self.prc_srv.returncode}")
+            self.server_started = False
+        else:
+            self.log.debug("Server was not started")
+        return self.__stop()
+
 
 class scs_gui(tkinter.ttk.Frame):
-    def __init__(self, _root: tkinter.LabelFrame, backend: socket_communication_class) -> None:
+    def __init__(self, _root: tkinter.LabelFrame, backend: socket_communication_class, splasher: Splasher) -> None:
         super().__init__(_root)
         self.root = _root
         self.backend = backend
-        self.start_button = tkinter.Button(self.root, text="Start", command=self.start)
-        self.stop_button = tkinter.Button(self.root, text="Stop", command=self.stop, state=tkinter.DISABLED)
+        self.splasher = splasher
+        self.start_button = tkinter.Button(self, text="Start", command=self.start)
         self.start_button.grid(row=0, column=0)
+        self.stop_button = tkinter.Button(self, text="Stop", command=self.stop, state=tkinter.DISABLED)
         self.stop_button.grid(row=0, column=1)
+        self.debug_on = tkinter.BooleanVar(value=True)
+        self.debug_chbox = tkinter.Checkbutton(self, text="Debug", variable=self.debug_on)
+        self.debug_chbox.grid(row=1, column=0)
+        self.simulate_on = tkinter.BooleanVar(value=True)
+        self.simulate_chbox = tkinter.Checkbutton(self, text="Simulate", variable=self.simulate_on)
+        self.simulate_chbox.grid(row=1, column=1)
         backend.set_default_values()
 
+    def __start(self, q: Queue) -> bool:
+        sim = self.simulate_on.get()
+        deb = self.debug_on.get()
+        rt = self.backend.start_request(sim, deb)
+        self.splasher.splash_set_stop()
+        q.put(rt)
+        return rt
+
+    def __stop(self, q: Queue) -> bool:
+        rt = self.backend.stop_request()
+        # self.backend.log.warning("GUI: splash setting stop")
+        self.splasher.splash_set_stop()
+        # self.backend.log.warning("GUI: splash setted stop, getting item from queue")
+        q.put(rt)
+        # self.backend.log.warning("GUI: got item from queue")
+        return rt
+
     def start(self) -> None:
-        self.start_button.configure(state=tkinter.DISABLED)
-        self.stop_button.configure(state=tkinter.NORMAL)
-        self.backend.start_request()
+        q: Queue = Queue()
+        thr = threading.Thread(target=self.__start, args=(q,))
+        thr.start()
+        self.splasher.splash_start()
+        self.splasher.splash_stop()
+        thr.join()
+        rt: bool = q.get()
+        # with concurrent.futures.ThreadPoolExecutor() as executor:
+        #     future = executor.submit(self.__start)
+        #     self.splasher.splash_start()
+        #     self.splasher.splash_stop()
+        #     rt: bool = future.result()
+        if rt:
+            self.start_button.configure(state=tkinter.DISABLED)
+            self.stop_button.configure(state=tkinter.NORMAL)
+        else:
+            self.start_button.configure(state=tkinter.NORMAL)
+            self.stop_button.configure(state=tkinter.DISABLED)
 
     def stop(self) -> None:
-        self.stop_button.configure(state=tkinter.DISABLED)
-        self.start_button.configure(state=tkinter.NORMAL)
-        self.backend.stop_request()
+        q: Queue = Queue()
+        thr = threading.Thread(target=self.__stop, args=(q,))
+        thr.start()
+        self.splasher.splash_start()
+        self.splasher.splash_stop()
+        thr.join()
+        rt: bool = q.get()
+        # with concurrent.futures.ThreadPoolExecutor() as executor:
+        #     future = executor.submit(self.__stop)
+        #     self.splasher.splash_start()
+        #     self.backend.log.warning("Splash start ended")
+        #     self.splasher.splash_stop()
+        #     self.backend.log.warning("Splash stopped")
+        #     rt: bool = future.result()
+        if rt:
+            self.stop_button.configure(state=tkinter.DISABLED)
+            self.start_button.configure(state=tkinter.NORMAL)
+        else:
+            self.stop_button.configure(state=tkinter.NORMAL)
+            self.start_button.configure(state=tkinter.DISABLED)
+
+
+if __name__ == "__main__":
+    pass

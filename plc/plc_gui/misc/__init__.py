@@ -19,3 +19,8 @@
 
 from . import except_notify
 from . import misc
+from . import splash
+
+
+if __name__ == "__main__":
+    pass

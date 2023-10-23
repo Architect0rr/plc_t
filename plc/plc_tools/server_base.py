@@ -1,7 +1,27 @@
-"""draft for our servers
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+#
+# Copyright (C) 2012-2013 Daniel Mohr
+#
+# Copyright (C) 2023 Perevoshchikov Egor
+#
+# This file is part of PlasmaLabControl.
+#
+# PlasmaLabControl is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# PlasmaLabControl is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with PlasmaLabControl.  If not, see <http://www.gnu.org/licenses/>.
 
-Author: Daniel Mohr
-Date: 2013-05-13
+"""
+draft for our servers
 """
 
 import time
@@ -81,7 +101,7 @@ class controller_class:
         a = s.split(",")
         b: List[float] = []
         for i in range(len(a)):
-            b[i] = float(a[i])
+            b.append(float(a[i]))
         return b
 
     def boolarray2str(self, A: List[bool]) -> str:
@@ -109,12 +129,8 @@ class controller_class:
         return A
 
     def updateloop(self) -> None:
-        """update
-
-        will update every updatedelay seconds
-
-        Author: Daniel Mohr
-        Date: 2013-01-25
+        """
+        update
         """
         global controller
         self.updatelock.acquire()  # lock for running
@@ -130,7 +146,7 @@ class controller_class:
     def shutdown(self) -> None:
         self.log.info("shutdown")
         self.running = False
-        time.sleep(2 * self.sleeptime)
+        # time.sleep(2 * self.sleeptime)
         if self.device.is_open:
             self.device.close()
             self.deviceopen = False
@@ -142,13 +158,11 @@ class controller_class:
             self.setpointlock.release()  # release the lock
 
     def get_setpoint(self) -> Dict[str, Any]:
-        """get_setpoint
+        """
+        get_setpoint
 
         So far as I know, this function is useless.
         It only exist due to completeness.
-
-        Author: Daniel Mohr
-        Date: 2012-09-30
         """
         self.setpointlock.acquire()  # lock to set
         s = self.setpoint
