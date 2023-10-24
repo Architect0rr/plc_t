@@ -29,13 +29,13 @@ import shlex
 import socket
 import logging
 import threading
+import functools
 import subprocess
 from queue import Queue
+from abc import abstractmethod
+from typing import Callable, List, TypeVar, Dict, Any
 import tkinter
 import tkinter.ttk
-from abc import abstractmethod
-from typing import Callable, List, TypeVar
-import functools
 
 from .read_config_file import read_config_file
 from ..plc_tools.plc_socket_communication import socket_communication, socketlock
@@ -109,8 +109,8 @@ class socket_communication_class(socket_communication):
         self.connected: bool = False
 
         self.log = log
-        self.actualvalue = None
-        self.setpoint = None
+        self.actualvalue: Dict[str, Any] = {}
+        self.setpoint: Dict[str, Any] = {}
         self.bufsize = bufsize  # read/receive Bytes at once
 
         self.lastupdate = time.time()
@@ -326,9 +326,11 @@ class socket_communication_class(socket_communication):
         return self.__stop()
 
 
-class scs_gui(tkinter.ttk.Frame):
-    def __init__(self, _root: tkinter.LabelFrame, backend: socket_communication_class, splasher: Splasher) -> None:
-        super().__init__(_root)
+class scs_gui(tkinter.ttk.LabelFrame):
+    def __init__(
+        self, _root: tkinter.LabelFrame, backend: socket_communication_class, splasher: Splasher, _name: str
+    ) -> None:
+        super().__init__(_root, text=_name)
         self.root = _root
         self.backend = backend
         self.splasher = splasher

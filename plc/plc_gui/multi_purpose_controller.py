@@ -63,6 +63,7 @@ class multi_purpose_controller(socket_communication_class, controller):
         self.ports_without_channel: List[str] = ["U05", "U15", "U24"]
         self.setpoint_port: List[str] = ["DO", "R", "U05", "U15", "U24", "DAC"]
         self.actualvalue_port: List[str] = ["DO", "R", "U05", "U15", "U24", "DAC", "DI", "ADC"]
+        self.set_default_values()
 
     @data_lock
     @general_lock

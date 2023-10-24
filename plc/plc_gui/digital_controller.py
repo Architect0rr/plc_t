@@ -57,6 +57,7 @@ class digital_controller(socket_communication_class, controller):
             "D": 8 * [None],
         }  # dict of values on device
         self.ports: List[str] = ["A", "B", "C", "D"]
+        self.set_default_values()
 
     @if_connect
     def set_default_values(self) -> bool:

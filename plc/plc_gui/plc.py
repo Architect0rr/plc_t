@@ -42,20 +42,20 @@ import tkinter.filedialog
 from tkinter import ttk
 
 
-# from . import camera
 from . import gas_system
 from . import controller
 from . import rf_generator
 from . import read_config_file
 from . import electrode_motion
 from . import translation_stage
-from . import acceleration_sensor
 from . import diagnostic_particles
 from .plcclientserverclass import scs_gui
 from ..plc_tools import plclogclasses
 from . import base_controller
 from .misc.splash import PassiveSplash, Splasher
 
+# from . import camera
+# from . import acceleration_sensor
 # from .misc import except_notify
 
 
@@ -79,15 +79,14 @@ class PLC(tk.Tk):
         self.withdraw()
         self.passivesplash = PassiveSplash(self)
         self.splaher = Splasher(self)
-        # set variables
-        # set default values
+
         self.log = _log
         self.log.debug("Initializing GUI")
         self.conffile = conffile
         self.configs = read_config_file.read_config_file(
             system_wide_ini_file=system_conffile.as_posix(), user_ini_file=conffile.as_posix()
         )
-        # Set up logging
+
         self.lh = plclogclasses.LabelLogHandler(n=self.configs.values.getint("gui", "debug_area_height"))
         self.lh.setLevel(logging.DEBUG)
         self.lh.setFormatter(logging.Formatter("%(asctime)s %(name)s %(message)s", datefmt="%H:%M:%S"))
@@ -95,104 +94,51 @@ class PLC(tk.Tk):
 
         self.log.debug(f"Found {self.configs.number_of_cameras} cameras in config file")
         self.log.debug(f"Found {self.configs.number_of_acceleration_sensor} acceleration sensors in config file")
-        # more variables
+
         self.update_intervall = self.configs.values.getint("gui", "update_intervall")  # milliseconds
         self.check_buttons_intervall = self.configs.values.getint("gui", "check_buttons_intervall")  # milliseconds
         self.padx = self.configs.values.get("gui", "padx")
         self.pady = self.configs.values.get("gui", "pady")
-        # set other variables
-        # self.args = args
+
         self.debug = 1  # self.args.debug
 
         # main code
         self.main_window = self  # tk.Tk()
         self.screenx = self.main_window.winfo_screenwidth()
         self.screeny = self.main_window.winfo_screenheight()
-        # self.main_window.title(f"plc - PlasmaLabControl ({self.conffile.as_posix()})")
-        self.main_window.title("plc - PlasmaLabControl (development 20411023)")
+        self.main_window.title("plc - PlasmaLabControl (development 23301024)")
 
-        # ########################
-        # ####### M E N U ########
-        # ########################
-
-        self.menu = tk.Menu(self.main_window)
-        # file menu
-        self.filemenu = tk.Menu(self.menu)
-        self.menu.add_cascade(label="File", menu=self.filemenu)
-        self.filemenu.add_command(label="Read setpoints", command=self.read_setpoints)
-        self.filemenu.add_command(label="Save default config", command=self.save_default_config)
-        self.filemenu.add_command(label="Exit", command=self.exit_button)
-        # Programs
-        self.programmenu = tk.Menu(self.menu)
-        self.menu.add_cascade(label="Programs", menu=self.programmenu)
-        self.programmenu.add_command(label="camera_client.py", command=self.start_extern_program_camera_client)
-        self.programmenu.add_command(
-            label="digital_controller_client.py",
-            command=self.start_extern_program_digital_controller_client,
-        )
-        self.programmenu.add_command(
-            label="multi_purpose_controller_client.py",
-            command=self.start_extern_program_multi_purpose_controller_client,
-        )
-        self.programmenu.add_command(label="debug_controller.py", command=self.start_extern_program_debug_controller)
-        self.programmenu.add_separator()
-        self.programmenu.add_command(label="plc_viewer.py", command=self.start_extern_program_plc_viewer)
-        self.programmenu.add_command(label="rawmovieviewer.py", command=self.start_extern_program_rawmovieviewer)
-
-        # debug
-        self.debugmenu = tk.Menu(self.menu)
-        self.menu.add_cascade(label="Debug", menu=self.debugmenu)
-        self.debugmenu_status = tk.IntVar()
-        self.debugmenu.add_checkbutton(
-            label="debug infos on/off",
-            command=self.switch_debug_infos_on_off,
-            variable=self.debugmenu_status,
-        )
-        self.debugmenu_status.set(1 if self.debug == 1 else 0)
-
-        # help menu
-        self.helpmenu = tk.Menu(self.menu)
-        self.menu.add_cascade(label="Help", menu=self.helpmenu)
-        self.helpmenu.add_command(label="About...", command=self.about)
-
+        self.menu = Menu(self.main_window)
         self.main_window.config(menu=self.menu)
-        # create toolbar
-        self.toolbar = tk.Frame(self.main_window)
+
+        self.toolbar = Toolbar(self.main_window)
         self.toolbar.pack(expand=True, fill=tk.X)
-        # create info area in toolbar
-        self.info_area = tk.Frame(self.toolbar)
-        self.info_area.pack(expand=True, fill=tk.X)
-        self.info_area_load_val = tk.StringVar()
-        self.info_area_load = tk.Label(
-            self.info_area, textvariable=self.info_area_load_val, height=1, width=21, anchor="sw"
-        )
-        self.info_area_load_val.set("")
-        self.info_area_load.pack(side=tk.RIGHT)
-        # create acceleration sensor
-        self.info_area_acceleration_sensor_vals = []
-        self.info_area_acceleration_sensors = []
-        for i in range(self.configs.number_of_acceleration_sensor):
-            self.info_area_acceleration_sensor_vals += [tk.StringVar()]
-            self.info_area_acceleration_sensors += [
-                tk.Label(
-                    self.info_area,
-                    textvariable=self.info_area_acceleration_sensor_vals[i],
-                    height=1,
-                    width=21,
-                    anchor="sw",
-                )
-            ]
-            self.info_area_acceleration_sensor_vals[i].set("acc%d=(?.??,?.??,?.??)" % (i + 1))
-            self.info_area_acceleration_sensors[i].pack(side=tk.RIGHT)
+
+        # # create acceleration sensor
+        # self.info_area_acceleration_sensor_vals = []
+        # self.info_area_acceleration_sensors = []
+        # for i in range(self.configs.number_of_acceleration_sensor):
+        #     self.info_area_acceleration_sensor_vals += [tk.StringVar()]
+        #     self.info_area_acceleration_sensors += [
+        #         tk.Label(
+        #             self.info_area,
+        #             textvariable=self.info_area_acceleration_sensor_vals[i],
+        #             height=1,
+        #             width=21,
+        #             anchor="sw",
+        #         )
+        #     ]
+        #     self.info_area_acceleration_sensor_vals[i].set("acc%d=(?.??,?.??,?.??)" % (i + 1))
+        #     self.info_area_acceleration_sensors[i].pack(side=tk.RIGHT)
 
         # ########################
         # ####### T A B S ########
         # ########################
 
         # create tabs
-        self.tabs = ttk.Notebook(self.main_window)
-        self.maintab = tk.Frame(self.tabs)
-        self.tabs.add(self.maintab, text="Main", sticky="NW")
+        self.tabs = Notebook(self.main_window)
+        # self.maintab = tk.Frame(self.tabs)
+        # self.tabs.add(self.maintab, text="Main", sticky="NW")
 
         # create camera tabs
         self.camera_tabs = []
@@ -226,7 +172,7 @@ class PLC(tk.Tk):
         # ########################
 
         # create user_interface area
-        self.user_interface = tk.Frame(self.maintab, relief="solid", borderwidth=1)
+        self.user_interface = tk.Frame(self.tabs.maintab, relief="solid", borderwidth=1)
         self.user_interface.pack()
         self.master_paned_window = tk.PanedWindow(self.user_interface, orient=tk.HORIZONTAL)
         self.master_paned_window.pack()
@@ -324,7 +270,8 @@ class PLC(tk.Tk):
         # ########################
 
         # create block for acceleration sensor
-        self.acceleration_sensor: List[acceleration_sensor.acceleration_sensor] = []
+        # self.acceleration_sensor: List[acceleration_sensor.acceleration_sensor] = []
+        self.acceleration_sensor: List = []
         # for i in range(self.configs.number_of_acceleration_sensor):
         #     self.acceleration_sensor += [
         #         acceleration_sensor.acceleration_sensor(
@@ -345,7 +292,7 @@ class PLC(tk.Tk):
         # ########################
 
         # create other blocks
-        self.control_window = tk.Frame(self.user_interface, relief="solid", borderwidth=1)
+        self.control_window = ttk.Frame(self.user_interface, relief="solid", borderwidth=1)
         self.master_paned_window.add(self.control_window)
 
         self.control_window1 = ttk.Frame(self.control_window, relief="solid", borderwidth=1)
@@ -357,34 +304,47 @@ class PLC(tk.Tk):
         # controller in a dict
         self.controller: Dict[str, base_controller.controller] = {}
 
-        self.digital_controller_window = tk.LabelFrame(self.controller_window, text="digital", labelanchor="n")
-        self.digital_controller_window.grid(column=0, row=0)
         self.digital_controller = controller.digital_controller(self.log.getChild("dc"), self.configs)
         self.controller["dc"] = self.digital_controller
-        self.controller["dc"].set_default_values()
-        self.dc_gui = scs_gui(self.digital_controller_window, self.digital_controller, self.splaher)
-        self.dc_gui.pack()
+        self.dc_gui = scs_gui(self.controller_window, self.digital_controller, self.splaher, "DC")
+        self.dc_gui.grid(column=0, row=0)
 
-        self.multi_purpose_controller_window = tk.LabelFrame(
-            self.controller_window, text="multi purpose", labelanchor="n"
-        )
-        self.multi_purpose_controller_window.grid(column=1, row=0)
         self.multi_purpose_controller = controller.multi_purpose_controller(self.log.getChild("mpc"), self.configs)
         self.controller["mpc"] = self.multi_purpose_controller
-        self.controller["mpc"].set_default_values()
-        self.mpc_gui = scs_gui(self.multi_purpose_controller_window, self.multi_purpose_controller, self.splaher)
-        self.mpc_gui.pack()
+        self.mpc_gui = scs_gui(self.controller_window, self.multi_purpose_controller, self.splaher, "MPC")
+        self.mpc_gui.grid(column=1, row=0)
 
         # electrode motion controller
         self.electrode_motion_controller_device = self.configs.values.get("electrode motion controller", "devicename")
         if self.electrode_motion_controller_device != "-1":
-            self.electrode_motion_controller_window = ttk.Frame(self.controller_window)
-            self.electrode_motion_controller_window.grid(column=2, row=0)
             emc_power_controller = self.configs.values.get("electrode motion controller", "power_controller")
             self.electrode_motion_controller = controller.electrode_motion_controller(
                 self.controller[emc_power_controller], self.configs, self.log.getChild("emc")
             )
             self.controller["emc"] = self.electrode_motion_controller
+            self.electrode_motion = electrode_motion.electrode_motion(
+                self.control_window,
+                self.log.getChild("emc"),
+                self.electrode_motion_controller,
+            )
+            self.electrode_motion.pack()
+
+        self.gas_system = gas_system.gs(self.configs, self.log.getChild("GS"), self.controller)
+        self.gs_gui = gas_system.gas_system(
+            self.control_window1,
+            self.gas_system,
+            self.log.getChild("GS"),
+        )
+        self.gs_gui.grid(column=1, row=0)
+
+        self.rf_generator_controller = controller.rf_generator_controller(
+            self.configs, self.log.getChild("rfgc"), self.controller
+        )
+        self.controller["rfgc"] = self.rf_generator_controller
+        self.rf_generator = rf_generator.rf_generator_gui(
+            self.control_window, self.configs, self.controller["rfgc"], self.log.getChild("rfgg")
+        )
+        self.rf_generator.pack()
 
         # ----------------------------
         # translation stage controller
@@ -403,28 +363,6 @@ class PLC(tk.Tk):
             self.controller["tsc"].gui()
             self.controller["tsc"].set_default_values()
 
-        # create block for gas system
-        self.gas_system_window = ttk.Frame(self.control_window1)
-        self.gas_system_window.grid(column=1, row=0)
-        self.gas_system = gas_system.gs(self.configs, self.log.getChild("GS"), self.controller)
-        self.gs_gui = gas_system.gas_system(
-            self.gas_system_window,
-            self.gas_system,
-            self.log.getChild("GS"),
-        )
-        self.gs_gui.pack()
-
-        # create block for RF-generator
-        self.rf_generator_controller = controller.rf_generator_controller(
-            config=self.configs, _log=self.log.getChild("rfgc")
-        )
-        self.controller["rfgc"] = self.rf_generator_controller
-        self.rf_generator_window = tk.Frame(self.control_window, relief="solid")
-        self.rf_generator_window.pack()
-        self.rf_generator = rf_generator.rf_generator_gui(
-            self.configs, self.rf_generator_window, self.controller["rfgc"], self.log.getChild("rfgg")
-        )
-
         # create block for diagnostic/particles
         self.diagnostic_particles_window = tk.LabelFrame(self.control_window, text="Diagnostics/Particles")
         self.diagnostic_particles_window.pack()
@@ -434,16 +372,7 @@ class PLC(tk.Tk):
             debugprint=self.debugprint,
             controller=self.controller,
         )
-        # create block for electrode motion
-        if self.electrode_motion_controller_device != "-1":
-            self.electrode_motion_window = ttk.Frame(self.control_window)
-            self.electrode_motion_window.pack()
-            self.electrode_motion = electrode_motion.electrode_motion(
-                self.electrode_motion_window,
-                self.log.getChild("emc"),
-                self.electrode_motion_controller,
-            )
-            self.electrode_motion.pack()
+
         # create block for translation stage
         if self.translation_stage_device != "-1":
             self.translation_stage_window = ttk.LabelFrame(self.control_window, text="Translation Stage")
@@ -461,44 +390,6 @@ class PLC(tk.Tk):
 
         # setpoints
         self.setpoints_choose = None
-        self.info_area_setpoints: Dict[str, Any] = dict()
-        self.info_area_setpoints["frame"] = tk.Frame(self.info_area, relief="solid", borderwidth=1)
-        # self.info_area_setpoints['frame'].grid(column=0,row=0)
-        self.info_area_setpoints["frame"].pack(side=tk.LEFT)
-        pw = self.info_area_setpoints["frame"]
-        self.info_area_setpoints["previous setpoint"] = tk.Button(
-            pw,
-            text="previous",
-            command=self.choose_previous_setpoint,
-            padx=self.padx,
-            pady=self.pady,
-            state=tk.DISABLED,
-        )
-        self.info_area_setpoints["previous setpoint"].grid(column=0, row=0)
-        self.info_area_setpoints["setpoint val"] = tk.StringVar()
-        self.info_area_setpoints["setpoint"] = tk.Label(
-            pw, textvariable=self.info_area_setpoints["setpoint val"], height=1, width=80
-        )
-        self.info_area_setpoints["setpoint"].grid(column=1, row=0)
-        self.info_area_setpoints["setpoint val"].set("- none available -")
-        self.info_area_setpoints["next setpoint"] = tk.Button(
-            pw,
-            text="next",
-            command=self.choose_next_setpoint,
-            padx=self.padx,
-            pady=self.pady,
-            state=tk.DISABLED,
-        )
-        self.info_area_setpoints["next setpoint"].grid(column=2, row=0)
-        self.info_area_setpoints["set setpoint"] = tk.Button(
-            pw,
-            text="set",
-            command=self.set_setpoints,
-            padx=self.padx,
-            pady=self.pady,
-            state=tk.DISABLED,
-        )
-        self.info_area_setpoints["set setpoint"].grid(column=3, row=0)
 
         self.default_setpoints_file = self.configs.values.get("ini", "default_setpoints_file")
         if self.default_setpoints_file != "-1":
@@ -530,32 +421,32 @@ class PLC(tk.Tk):
                 self.configs.values.get("dispensers", "key_binding_dispenser4"),
                 self.shake_dispenser4,
             )
-        if self.configs.values.get("ini", "key_binding_setpoints_previous") != "-1":
-            self.main_window.bind(
-                self.configs.values.get("ini", "key_binding_setpoints_previous"),
-                self.choose_previous_setpoint,
-            )
-        if self.configs.values.get("ini", "key_binding_setpoints_next") != "-1":
-            self.main_window.bind(
-                self.configs.values.get("ini", "key_binding_setpoints_next"),
-                self.choose_next_setpoint,
-            )
+        # if self.configs.values.get("ini", "key_binding_setpoints_previous") != "-1":
+        #     self.main_window.bind(
+        #         self.configs.values.get("ini", "key_binding_setpoints_previous"),
+        #         self.choose_previous_setpoint,
+        #     )
+        # if self.configs.values.get("ini", "key_binding_setpoints_next") != "-1":
+        #     self.main_window.bind(
+        #         self.configs.values.get("ini", "key_binding_setpoints_next"),
+        #         self.choose_next_setpoint,
+        #     )
         if self.configs.values.get("ini", "key_binding_setpoints_set") != "-1":
             self.main_window.bind(self.configs.values.get("ini", "key_binding_setpoints_set"), self.set_setpoints)
-        # connect to digital controller on startup
-        if self.configs.values.getboolean("dc", "connect_server"):
-            self.controller["dc"].start_request()
-        # connect to multi purpose controller on startup
-        if self.configs.values.getboolean("mpc", "connect_server"):
-            self.controller["mpc"].start_request()
-        # connect to acceleration sensor controller on startup
-        for i in range(self.configs.number_of_acceleration_sensor):
-            if self.configs.values.getboolean("acceleration_sensor%d" % (i + 1), "connect_server"):
-                self.acceleration_sensor[i].start_request()
-        # start environment_sensor_5 on startup
-        self.start_environment_sensor_5()
+        # # connect to digital controller on startup
+        # if self.configs.values.getboolean("dc", "connect_server"):
+        #     self.controller["dc"].start_request()
+        # # connect to multi purpose controller on startup
+        # if self.configs.values.getboolean("mpc", "connect_server"):
+        #     self.controller["mpc"].start_request()
+        # # connect to acceleration sensor controller on startup
+        # for i in range(self.configs.number_of_acceleration_sensor):
+        #     if self.configs.values.getboolean("acceleration_sensor%d" % (i + 1), "connect_server"):
+        #         self.acceleration_sensor[i].start_request()
+        # # start environment_sensor_5 on startup
+        # self.start_environment_sensor_5()
 
-        self.after(self.update_intervall, func=self.update)  # call update every ... milliseconds
+        self.after(self.update_intervall, func=self.upd)  # call update every ... milliseconds
         self.after(self.check_buttons_intervall, func=self.check_buttons)  # call update every ... milliseconds
 
         self.passivesplash.destroy()
@@ -809,16 +700,15 @@ class PLC(tk.Tk):
         self.debugprint("signum = %d" % signum)
         # signal.alarm(1)
 
-    def update(self) -> None:
+    def upd(self) -> None:
         """update every dynamic read values"""
-        self.gs_gui.update()
+        self.gs_gui.upd()
+        self.rf_generator.upd()
         # self.diagnostic_particles.update()
-        # load
-        (load1, load2, load3) = os.getloadavg()
-        self.info_area_load_val.set("load=(%2.2f,%2.2f,%2.2f)" % (load1, load2, load3))
+        self.toolbar.set_info_load("load=(%2.2f,%2.2f,%2.2f)" % os.getloadavg())
 
         # loop:
-        self.main_window.after(self.update_intervall, func=self.update)  # call update every ... milliseconds
+        self.main_window.after(self.update_intervall, func=self.upd)  # call update every ... milliseconds
 
     def check_buttons(self):
         pass
@@ -840,26 +730,6 @@ class PLC(tk.Tk):
     #         self.check_buttons_intervall, func=self.check_buttons
     #     )  # call update every ... milliseconds
 
-    def switch_debug_infos_off(self):
-        self.debugprint("debug infos off")
-        self.debug = 0
-        plclogclasses.LabelLogHandler.set_out(self.lh, None)
-        # log.setLevel(logging.DEBUG)
-        self.debug_infos.destroy()
-
-    def switch_debug_infos_on(self):
-        self.debugprint("debug infos on")
-        self.debug = 1
-        self.create_debug_area()
-        # log.setLevel(logging.WARNING)
-
-    def switch_debug_infos_on_off(self):
-        self.debugprint("debug infos on/off")
-        if self.debugmenu_status.get() == 0:
-            self.switch_debug_infos_off()
-        elif self.debugmenu_status.get() == 1:
-            self.switch_debug_infos_on()
-
     def read_setpoints(self):
         self.log.debug("ask for file to read setpoints from")
         f = tkinter.filedialog.askopenfilename(
@@ -879,11 +749,41 @@ class PLC(tk.Tk):
         self.setpoints.read(os.path.expanduser(self.default_setpoints_file))
         if len(self.setpoints.sections()) > 0:
             self.log.debug("found %d sections" % len(self.setpoints.sections()))
-            self.choose_setpoint(i=0)
+            self.__choose_setpoint(i=0)
             self.load_setpoints()
-            self.info_area_setpoints["previous setpoint"].configure(state=tk.NORMAL)
-            self.info_area_setpoints["next setpoint"].configure(state=tk.NORMAL)
-            self.info_area_setpoints["set setpoint"].configure(state=tk.NORMAL)
+            self.toolbar.setpoints_area.unlock()
+
+    def __choose_setpoint(self, i=0) -> str:
+        self.setpoints_choose = i
+        s = self.setpoints.sections()[i]
+        self.log.debug("choose setpoints %d: %s" % (i, s))
+        if self.setpoints.has_option(s, "load_set") and self.setpoints.getboolean(s, "load_set"):
+            self.set_setpoints()
+            return s
+        else:
+            return "None"
+
+    def choose_previous_setpoint(self) -> str:
+        i = self.setpoints_choose
+        if i is not None:
+            i = max(0, i - 1)
+            if i != self.setpoints_choose:
+                return self.__choose_setpoint(i=i)
+            else:
+                return "None"
+        else:
+            return "None"
+
+    def choose_next_setpoint(self) -> str:
+        i = self.setpoints_choose
+        if i is not None:
+            i = min((len(self.setpoints.sections()) - 1, i + 1))
+            if i != self.setpoints_choose:
+                return self.__choose_setpoint(i=i)
+            else:
+                return "None"
+        else:
+            return "None"
 
     def load_setpoints(self):
         if self.setpoints_choose is not None:
@@ -892,6 +792,15 @@ class PLC(tk.Tk):
             self.log.debug("load setpoints %d: %s" % (i, s))
             if self.setpoints.has_option(s, "load_set") and self.setpoints.getboolean(s, "load_set"):
                 self.set_setpoints()
+
+    def switch_debug_infos_off(self):
+        self.debug = 0
+        plclogclasses.LabelLogHandler.set_out(self.lh, None)
+        self.debug_infos.destroy()
+
+    def switch_debug_infos_on(self):
+        self.debug = 1
+        self.create_debug_area()
 
     def set_setpoints(self, event=None):
         pass
@@ -952,29 +861,137 @@ class PLC(tk.Tk):
     #             if self.setpoints.getboolean(s, "ignite_plasma"):
     #                 self.rf_generator.ignite_plasma()
 
-    def choose_setpoint(self, i=0):
-        self.setpoints_choose = i
-        s = self.setpoints.sections()[i]
-        self.log.debug("choose setpoints %d: %s" % (i, s))
-        self.info_area_setpoints["setpoint val"].set(s)
-        if self.setpoints.has_option(s, "load_set") and self.setpoints.getboolean(s, "load_set"):
-            self.set_setpoints()
 
-    def choose_previous_setpoint(self, event=None):
-        i = self.setpoints_choose
-        if i is not None:
-            i = max(0, i - 1)
-            if i != self.setpoints_choose:
-                self.info_area_setpoints["previous setpoint"].flash()
-                self.choose_setpoint(i=i)
+class Notebook(ttk.Notebook):
+    def __init__(self, _root: PLC) -> None:
+        super().__init__(_root)
+        self.root = _root
 
-    def choose_next_setpoint(self, event=None):
-        i = self.setpoints_choose
-        if i is not None:
-            i = min((len(self.setpoints.sections()) - 1, i + 1))
-            if i != self.setpoints_choose:
-                self.info_area_setpoints["next setpoint"].flash()
-                self.choose_setpoint(i=i)
+        self.maintab = MainTab(self)
+        self.add(self.maintab, text="Main", sticky="NW")
+
+
+class MainTab(ttk.Frame):
+    def __init__(self, _root: Notebook) -> None:
+        super().__init__(_root)
+        self.root = _root
+
+
+class Toolbar(ttk.Frame):
+    def __init__(self, _root: PLC) -> None:
+        super().__init__(_root)
+        self.root = _root
+
+        self.info_area_load_val = tk.StringVar()
+        self.info_area_load = ttk.Label(self, textvariable=self.info_area_load_val, width=21, anchor="sw")
+        self.info_area_load_val.set("")
+        self.info_area_load.pack(side=tk.RIGHT)
+
+        self.setpoints_area = Spoints(self)
+        self.setpoints_area.pack(side=tk.LEFT)
+
+    def set_info_load(self, info: str) -> None:
+        self.info_area_load_val.set(info)
+
+
+class Spoints(ttk.Frame):
+    def __init__(self, _root: Toolbar) -> None:
+        super().__init__(_root, relief="solid", borderwidth=1)
+        self.root = _root
+        self.setpoint_val = tk.StringVar()
+        self.setpoint_label = tk.Label(self, textvariable=self.setpoint_val, height=1, width=80)
+        self.setpoint_label.grid(column=1, row=0)
+        self.setpoint_val.set("- none available -")
+        self.btn_previous = ttk.Button(
+            self,
+            text="previous",
+            command=self.choose_previous_setpoint,
+            state=tk.DISABLED,
+        )
+        self.btn_previous.grid(column=0, row=0)
+        self.btn_next = ttk.Button(
+            self,
+            text="next",
+            command=self.choose_next_setpoint,
+            state=tk.DISABLED,
+        )
+        self.btn_next.grid(column=2, row=0)
+        self.btn_set = ttk.Button(
+            self,
+            text="set",
+            command=self.root.root.set_setpoints,
+            state=tk.DISABLED,
+        )
+        self.btn_set.grid(column=3, row=0)
+
+    def choose_previous_setpoint(self) -> None:
+        # self.btn_previous.flash()
+        s = self.root.root.choose_previous_setpoint()
+        self.setpoint_val.set(s)
+
+    def choose_next_setpoint(self) -> None:
+        # self.btn_next.flash()
+        s = self.root.root.choose_next_setpoint()
+        self.setpoint_val.set(s)
+
+    def unlock(self) -> None:
+        self.btn_next.configure(state=tk.NORMAL)
+        self.btn_previous.configure(state=tk.NORMAL)
+        self.btn_set.configure(state=tk.NORMAL)
+
+
+class Menu(tk.Menu):
+    """plc menu"""
+
+    def __init__(self, _root: PLC) -> None:
+        super().__init__(_root)
+        self.root = _root
+
+        # file menu
+        self.files = tk.Menu(self)
+        self.add_cascade(label="File", menu=self.files)
+        self.files.add_command(label="Read setpoints", command=self.root.read_setpoints)
+        self.files.add_command(label="Save default config", command=self.root.save_default_config)
+        self.files.add_command(label="Exit", command=self.root.exit_button)
+
+        # Programs
+        self.programs = tk.Menu(self)
+        self.add_cascade(label="Programs", menu=self.programs)
+        self.programs.add_command(label="camera_client.py", command=self.root.start_extern_program_camera_client)
+        self.programs.add_command(
+            label="digital_controller_client.py",
+            command=self.root.start_extern_program_digital_controller_client,
+        )
+        self.programs.add_command(
+            label="multi_purpose_controller_client.py",
+            command=self.root.start_extern_program_multi_purpose_controller_client,
+        )
+        self.programs.add_command(label="debug_controller.py", command=self.root.start_extern_program_debug_controller)
+        self.programs.add_separator()
+        self.programs.add_command(label="plc_viewer.py", command=self.root.start_extern_program_plc_viewer)
+        self.programs.add_command(label="rawmovieviewer.py", command=self.root.start_extern_program_rawmovieviewer)
+
+        # debug
+        self.debug = tk.Menu(self)
+        self.add_cascade(label="Debug", menu=self.debug)
+        self.debugmenu_status = tk.IntVar()
+        self.debug.add_checkbutton(
+            label="debug infos on/off",
+            command=self.switch_debug_infos_on_off,
+            variable=self.debugmenu_status,
+        )
+        self.debugmenu_status.set(1 if self.debug == 1 else 0)
+
+        # help menu
+        self.help = tk.Menu(self)
+        self.add_cascade(label="Help", menu=self.help)
+        self.help.add_command(label="About...", command=self.root.about)
+
+    def switch_debug_infos_on_off(self) -> None:
+        if self.debugmenu_status.get() == 0:
+            self.root.switch_debug_infos_off()
+        elif self.debugmenu_status.get() == 1:
+            self.root.switch_debug_infos_on()
 
 
 if __name__ == "__main__":

@@ -359,7 +359,7 @@ class gas_system(tkinter.ttk.LabelFrame):
             err = "ERROR: general"
         return err
 
-    def update(self) -> None:
+    def upd(self) -> None:
         """update every dynamic read values"""
         self.membran_pump_status_val.set(b2onoff(self.backend.membran_pump_state()))
         self.turbo_pump_1_status_val.set(b2onoff(self.backend.turbo_pump_1_status()))

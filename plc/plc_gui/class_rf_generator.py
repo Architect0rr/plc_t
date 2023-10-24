@@ -25,17 +25,21 @@ class for one 'Euro_4x_RF-DC_and_RF-gen'-Generator
 """
 
 import time
+import serial
 import logging
+import functools
 from enum import Enum
 from dataclasses import dataclass
-from typing import List, Dict, Annotated, Callable
-
-import serial
-import tkinter
-import tkinter.ttk
+from typing import List, Dict, Annotated, Callable, TypeVar
+import tkinter as tk
+from tkinter import ttk
 
 from .read_config_file import read_config_file
+from .controller import controller
 from .misc import except_notify
+
+
+T = TypeVar("T")
 
 
 @dataclass
@@ -117,52 +121,50 @@ class class_channel:
         self._phase_write()
 
 
-class cc_gui(tkinter.ttk.Frame):
-    def __init__(self, _root: tkinter.ttk.LabelFrame, backend: class_channel, _log: logging.Logger) -> None:
+class cc_gui(ttk.Frame):
+    def __init__(self, _root: ttk.LabelFrame, backend: class_channel, _log: logging.Logger) -> None:
         super().__init__(_root)
         self.log = _log
         self.current_bonds = (0, 4095)
         self.phase_bonds = (0, 255)
         self.backend = backend
-        self.onoff_status: tkinter.IntVar = tkinter.IntVar()
-        self.onoff_status_checkbutton: tkinter.Checkbutton = tkinter.Checkbutton(
+        self.onoff_status: tk.IntVar = tk.IntVar()
+        self.onoff_status_checkbutton: tk.Checkbutton = tk.Checkbutton(
             self,
             text=f"Pwr Channel {backend.n}",
             command=self.btn_onoff,
             variable=self.onoff_status,
-            state=tkinter.DISABLED,
+            state=tk.DISABLED,
         )
         self.onoff_status_checkbutton.grid(column=0, row=backend.n)
 
         vcmd = (self.register(self.validate), "%P", "%W")
         ivcmd = (self.register(self.on_invalid), "%W")
-        self.current_status: tkinter.IntVar = tkinter.IntVar()
-        self.current_status_entry: tkinter.Entry = tkinter.Entry(
-            self, name="current", textvariable=self.current_status, width=5
+        self.current_status: tk.IntVar = tk.IntVar()
+        self.current_status_entry: tk.Entry = tk.Entry(
+            self, name="current", textvariable=self.current_status, width=5, state=tk.DISABLED
         )
         self.current_status_entry.grid(column=2, row=backend.n)
         self.current_status_entry.configure(validate="key", validatecommand=vcmd, invalidcommand=ivcmd)
 
-        self.phase_status: tkinter.IntVar = tkinter.IntVar()
-        self.phase_status_entry: tkinter.Entry = tkinter.Entry(
-            self, name="phase", textvariable=self.phase_status, width=4
+        self.phase_status: tk.IntVar = tk.IntVar()
+        self.phase_status_entry: tk.Entry = tk.Entry(
+            self, name="phase", textvariable=self.phase_status, width=4, state=tk.DISABLED
         )
         self.phase_status_entry.grid(column=4, row=backend.n)
         self.phase_status_entry.configure(validate="key", validatecommand=vcmd, invalidcommand=ivcmd)
 
-        self.choose: tkinter.IntVar = tkinter.IntVar()
-        self.choose_checkbutton: tkinter.Checkbutton = tkinter.Checkbutton(
+        self.choose: tk.IntVar = tk.IntVar()
+        self.choose_checkbutton: tk.Checkbutton = tk.Checkbutton(
             self, text=f"Channel {backend.n}", variable=self.choose
         )
         self.choose_checkbutton.grid(column=6, row=backend.n)
         self.choose_checkbutton.select()
-        self.button_set: tkinter.ttk.Button = tkinter.ttk.Button(
-            self, text="Set", command=self.__set, state=tkinter.DISABLED
-        )
+        self.button_set: ttk.Button = ttk.Button(self, text="Set", command=self.__set, state=tk.DISABLED)
         self.button_set.grid(column=7, row=backend.n)
 
     def __set(self) -> None:
-        self.button_set.configure(state=tkinter.DISABLED)
+        self.button_set.configure(state=tk.DISABLED)
         self.backend.current = int(self.current_status_entry.get())
         self.backend.phase = int(self.phase_status_entry.get())
 
@@ -206,11 +208,11 @@ class cc_gui(tkinter.ttk.Frame):
                     return False
                 if 0 <= current and current <= 4095:
                     # self.backend.current = current
-                    self.button_set.configure(state=tkinter.NORMAL)
+                    self.button_set.configure(state=tk.NORMAL)
                     self.current_status_entry.configure(background="green")
                     return True
                 else:
-                    self.button_set.configure(state=tkinter.DISABLED)
+                    self.button_set.configure(state=tk.DISABLED)
                     self.current_status_entry.configure(background="red")
                     return False
             elif widget_name == "phase":
@@ -220,11 +222,11 @@ class cc_gui(tkinter.ttk.Frame):
                     return False
                 if 0 <= phase and phase <= 255:
                     # self.backend.phase = phase
-                    self.button_set.configure(state=tkinter.NORMAL)
+                    self.button_set.configure(state=tk.NORMAL)
                     self.phase_status_entry.configure(background="green")
                     return True
                 else:
-                    self.button_set.configure(state=tkinter.DISABLED)
+                    self.button_set.configure(state=tk.DISABLED)
                     self.phase_status_entry.configure(background="red")
                     return False
             else:
@@ -241,12 +243,92 @@ class cc_gui(tkinter.ttk.Frame):
             self.phase_status_entry["backgroud"] = "red"
 
 
+def if_exists(fn: Callable[..., bool]):
+    @functools.wraps(fn)
+    def wrapper(*args, **kwargs) -> bool:
+        self: class_rf_generator = args[0]
+        if self.exists:
+            return fn(*args, **kwargs)
+        else:
+            self.log.warning("Attempt to deal with non-existent rf-gen")
+            return False
+
+    return wrapper
+
+
+def if_exists_non(fn: Callable[..., T]):
+    @functools.wraps(fn)
+    def wrapper(*args, **kwargs) -> T | None:
+        self: class_rf_generator = args[0]
+        if self.exists:
+            return fn(*args, **kwargs)
+        else:
+            self.log.warning("Attempt to deal with non-existent rf-gen")
+            return None
+
+    return wrapper
+
+
+def if_gen_enabled(fn: Callable[..., bool]):
+    @functools.wraps(fn)
+    def wrapper(*args, **kwargs) -> bool:
+        self: class_rf_generator = args[0]
+        if self.gen_enabled:
+            return fn(*args, **kwargs)
+        else:
+            self.log.warning("Attempt to deal with non-existent rf-gen")
+            return False
+
+    return wrapper
+
+
+def if_gen_enabled_non(fn: Callable[..., T]):
+    @functools.wraps(fn)
+    def wrapper(*args, **kwargs) -> T | None:
+        self: class_rf_generator = args[0]
+        if self.gen_enabled:
+            return fn(*args, **kwargs)
+        else:
+            self.log.warning("Attempt to deal with non-existent rf-gen")
+            return None
+
+    return wrapper
+
+
+def if_dc_enabled(fn: Callable[..., bool]):
+    @functools.wraps(fn)
+    def wrapper(*args, **kwargs) -> bool:
+        self: class_rf_generator = args[0]
+        if self.dc_enabled:
+            return fn(*args, **kwargs)
+        else:
+            self.log.warning("Attempt to deal with non-existent rf-gen")
+            return False
+
+    return wrapper
+
+
+def if_dc_enabled_non(fn: Callable[..., T]):
+    @functools.wraps(fn)
+    def wrapper(*args, **kwargs) -> T | None:
+        self: class_rf_generator = args[0]
+        if self.dc_enabled:
+            return fn(*args, **kwargs)
+        else:
+            self.log.warning("Attempt to deal with non-existent rf-gen")
+            return None
+
+    return wrapper
+
+
 class class_rf_generator:
     """
     class for one 'Euro_4x_RF-DC_and_RF-gen'-Generator
     """
 
-    def __init__(self, exists: bool, number: int, config: read_config_file, _log: logging.Logger) -> None:
+    def __init__(
+        self, exists: bool, number: int, config: read_config_file, _log: logging.Logger, pwc: controller
+    ) -> None:
         """
         init of class for one 'Euro_4x_RF-DC_and_RF-gen'-Generator
         """
@@ -254,28 +336,20 @@ class class_rf_generator:
         self.log = _log
         if self.exists:
             self.number = number
+            self.pwc = pwc
             self.power_controller: str = config.values.get(f"RF-Generator {number + 1}", "power_controller")
             self.power_port: str = config.values.get(f"RF-Generator {number + 1}", "power_port")
-            self.power_channel: str = config.values.get(f"RF-Generator {number + 1}", "power_channel")
+            self.power_channel: int = config.values.getint(f"RF-Generator {number + 1}", "power_channel")
 
             self.channel: List[class_channel] = []
             for i in range(4):
                 cn = self.number * 4 + i
                 self.channel.append(class_channel(cn, self.channel_handler, self.log.getChild(f"chan{cn}")))
-            # self.setpoint_channel: List[class_channel] = []
-            # for i in range(4):
-            #     self.setpoint_channel.append(class_channel(self.number * 4 + i, self.channel_handler))
-            # self.actualvalue_channel: List[class_channel] = []
-            # for i in range(4):
-            #     self.actualvalue_channel.append(class_channel(self.number * 4 + i, self.channel_handler))
 
-            # self.setpoint_rf_onoff: bool = False
-            # self.actualvalue_rf_onoff: bool = False
-            # self.setpoint_ignite_plasma: bool = False
             self.actualvalue_pattern: str = ""
             self.device = None
-            self.rf_enabled: bool = False
-            self.dc_enabled: bool = False
+            self.gen_enabled: bool = False  # connected and on
+            self.dc_enabled: bool = False  # connected and on
             self.update_intervall = config.values.getfloat(f"RF-Generator {number + 1}", "update_intervall")
             self.gen_device: str = config.values.get(f"RF-Generator {number + 1}", "gen_device")
             self.dc_device: str = config.values.get(f"RF-Generator {number + 1}", "dc_device")
@@ -306,12 +380,30 @@ class class_rf_generator:
                 write_timeout=self.writetimeout,
             )
 
+    @if_exists_non
+    @if_gen_enabled_non
     def read_gen(self) -> None:
         self.log.info(f"From rf-gen {self.number}: {self.dev_gen.read(self.readbytes).decode('utf-8')}")
 
+    @if_exists_non
+    @if_dc_enabled_non
     def read_dc(self) -> None:
         self.log.info(f"From rf-dc {self.number}: {self.dev_dc.read(self.readbytes).decode('utf-8')}")
 
+    @if_exists_non
+    @if_gen_enabled_non
+    def __write_gen(self, data: str):
+        self.log.info(f"To rf-gen №{self.number}: {data}")
+        self.dev_gen.write(data.encode("utf-8"))
+
+    @if_exists_non
+    @if_dc_enabled_non
+    def __write_dc(self, data: str):
+        self.log.info(f"To rf-dc №{self.number}: {data}")
+        self.dev_dc.write(data.encode("utf-8"))
+
+    @if_exists_non
+    @if_dc_enabled_non
     def send_maxcurrent_tmp(self, maxcurrent_tmp: int) -> None:
         # set maxcurrent_tmp
         c: List[str] = []
@@ -321,10 +413,10 @@ class class_rf_generator:
                 c[i] = f"0{c[i]}"
             c[i] = f"{c[i][2:4]}{c[i][0:2]}"
         si = f"#D{c[2]}{c[3]}{c[0]}{c[1]}"
+        self.__write_dc(si)
 
-        self.log.info(f"To rf-dc {self.number}: {si}")
-        self.dev_dc.write(si.encode("utf-8"))
-
+    @if_exists_non
+    @if_dc_enabled_non
     def send_maxcurrent(self, maxcurrent: int) -> None:
         # set maxcurrent
         c: List[str] = []
@@ -334,10 +426,10 @@ class class_rf_generator:
                 c[i] = f"0{c[i]}"
             c[i] = f"{c[i][2:4]}{c[i][0:2]}"
         si = f"#D{c[2]}{c[3]}{c[0]}{c[1]}"
+        self.__write_dc(si)
 
-        self.log.info(f"To rf-dc {self.number}: {si}")
-        self.dev_dc.write(si.encode("utf-8"))
-
+    @if_exists_non
+    @if_dc_enabled_non
     def change_power(self, maxcurrent: int) -> None:
         # max. normal power -> user defined power
         nsteps = 10
@@ -353,24 +445,21 @@ class class_rf_generator:
                     c[i] = f"0{c[i]}"
                 c[i] = f"{c[i][2:4]}{c[i][0:2]}"
             si = f"#D{c[2]}{c[3]}{c[0]}{c[1]}"
-            self.log.info(f"To rf-dc {self.number}: {si}")
-            self.dev_dc.write(si.encode("utf-8"))
+            self.__write_dc(si)
 
+    @if_exists_non
+    @if_dc_enabled_non
+    @if_gen_enabled_non
     def ignition(self, maxcurrent: int, maxcurrent_tmp: int) -> None:
         self.rf_off()
-
         self.send_maxcurrent_tmp(maxcurrent_tmp)
         time.sleep(0.01)
-
         self.rf_on()
         time.sleep(0.1)
-
         self.send_maxcurrent(maxcurrent)
         time.sleep(1)
-
         self.send_maxcurrent_tmp(maxcurrent_tmp)
         time.sleep(0.1)
-
         self.change_power(maxcurrent)
         time.sleep(0.1)
 
@@ -381,8 +470,7 @@ class class_rf_generator:
                 c[i] = f"0{c[i]}"
             c[i] = f"{c[i][2:4]}{c[i][0:2]}"
         s = f"#D{c[2]}{c[3]}{c[0]}{c[1]}"
-        self.log.info(f"To rf-dc {self.number}: {s}")
-        self.dev_dc.write(s.encode("utf-8"))
+        self.__write_dc(s)
 
     def set_status(self):
         """set the status of all elements
@@ -395,14 +483,8 @@ class class_rf_generator:
             self.channel[i].phase = 0
         self.rf_onoff = False
 
-    def __write_gen(self, data: str):
-        self.log.info(f"To rf-gen №{self.number}: {data}")
-        self.dev_gen.write(data.encode("utf-8"))
-
-    def __write_dc(self, data: str):
-        self.log.info(f"To rf-dc №{self.number}: {data}")
-        self.dev_dc.write(data.encode("utf-8"))
-
+    @if_exists_non
+    @if_gen_enabled_non
     def __onoff_action(self) -> None:
         self.log.debug("Channel on/off")
         onoff: int = 0  # all off
@@ -414,6 +496,8 @@ class class_rf_generator:
         w2gen = f"@X{onoff_s}"
         self.__write_gen(w2gen)
 
+    @if_exists_non
+    @if_dc_enabled_non
     def __current_action(self) -> None:
         self.log.debug("Channel current changed")
         c: List[str] = []
@@ -425,6 +509,8 @@ class class_rf_generator:
         w2dc = f"#O#D{c[2]}{c[3]}{c[0]}{c[1]}"
         self.__write_dc(w2dc)
 
+    @if_exists_non
+    @if_gen_enabled_non
     def __phase_action(self) -> None:
         self.log.debug("Channel current changed")
         p: List[str] = []
@@ -445,84 +531,70 @@ class class_rf_generator:
         elif event == EVENTS.phase:
             self.__phase_action()
 
+    @if_exists_non
     def rf_on(self) -> None:
-        # if self.rf_enabled:
-        # except_notify.show(RuntimeError("Attempt to enable rf, while alredy enabled"))
-        self.rf_enabled = True
+        self.gen_enabled = True
         if not self.dev_gen.is_open:
             self.dev_gen.open()
-        # else:
-        #     except_notify.show(RuntimeError("Attempt to enable open rf port, while alredy opened"))
         self.__write_gen("@E")
 
+    @if_exists_non
     def rf_off(self) -> None:
-        # if not self.rf_enabled:
-        #     except_notify.show(RuntimeError("Attempt to disable rf, while alredy disabled"))
         self.__write_gen("@D")
         if self.dev_gen.is_open:
             self.dev_gen.close()
-        # else:
-        #     except_notify.show(RuntimeError("Attempt to close rf port, while alredy closed"))
-        self.rf_enabled = False
+        self.gen_enabled = False
 
+    @if_exists_non
     def dc_on(self) -> None:
-        # if self.dc_enabled:
-        #     except_notify.show(RuntimeError("Attempt to enable dc, while alredy enabled"))
         self.dc_enabled = True
         if not self.dev_dc.is_open:
             self.dev_dc.open()
-        # else:
-        #     except_notify.show(RuntimeError("Attempt to enable open dc port, while alredy opened"))
         self.__write_dc("#O")
 
+    @if_exists_non
     def dc_off(self) -> None:
-        # if not self.dc_enabled:
-        #     except_notify.show(RuntimeError("Attempt to disable dc, while alredy disabled"))
         self.__write_dc("#o")
         if self.dev_dc.is_open:
             self.dev_dc.close()
-        # else:
-        #     except_notify.show(RuntimeError("Attempt to close dc port, while alredy closed"))
         self.dc_enabled = False
 
+    @if_exists_non
     def open_serial(self) -> None:
-        if not self.exists:
-            self.log.error("Attempt to connect nonexistent rf-gen")
-            except_notify.show(RuntimeError("Attempt to connect nonexistent rf-gen"))
-            return
         self.log.info(f"Starting generator №{self.number}")
         self.rf_on()
         self.log.info(f"Starting dc №{self.number}")
         self.dc_on()
 
+    @if_exists_non
     def close_serial(self) -> None:
-        if not self.exists:
-            self.log.error("Attempt to connect nonexistent rf-gen")
-            except_notify.show(RuntimeError("Attempt to connect nonexistent rf-gen"))
-            return
         self.log.info(f"Stopping generator №{self.number}")
         self.rf_off()
         self.log.info(f"Stopping dc №{self.number}")
         self.dc_off()
 
+    @if_exists_non
+    def power(self, state: bool) -> None:
+        self.pwc.setpoint[self.power_port][self.power_channel] = state
 
-class rfg_gui(tkinter.ttk.LabelFrame):
-    def __init__(self, _root: tkinter.ttk.LabelFrame, _backend: class_rf_generator, _log: logging.Logger) -> None:
+
+class rfg_gui(ttk.LabelFrame):
+    def __init__(self, _root: ttk.LabelFrame, _backend: class_rf_generator, _log: logging.Logger) -> None:
         super().__init__(_root, text="GEN_" + str(_backend.number + 1) if _backend.exists else "NE")
         self.backend = _backend
         self.log = _log
         self.exists = self.backend.exists
         if self.exists:
-            self.power_status: tkinter.IntVar = tkinter.IntVar()
-            self.power_status_checkbutton: tkinter.Checkbutton = tkinter.Checkbutton(
+            self.power_status: tk.IntVar = tk.IntVar()
+            self.power_status_checkbutton: tk.Checkbutton = tk.Checkbutton(
                 self,
                 text=f"Power RF-Generator {self.backend.number + 1}",
                 command=self.btn_power,
                 variable=self.power_status,
-                state=tkinter.DISABLED,
+                state=tk.DISABLED,
             )
             self.power_status_checkbutton.pack()
-            self.channels_frame = tkinter.ttk.LabelFrame(self, text="Channels")
+            self.channels_frame = ttk.LabelFrame(self, text="Channels")
             self.channels_frame.pack()
             self.channels: List[cc_gui] = [
                 cc_gui(self.channels_frame, _backend, self.log.getChild(f"gui_chan{_backend.n}"))
@@ -530,14 +602,14 @@ class rfg_gui(tkinter.ttk.LabelFrame):
             ]
             [c.pack() for c in self.channels]
 
-            # self.setpoint_channels_frame = tkinter.ttk.LabelFrame(self, text="Setpoint channels")
+            # self.setpoint_channels_frame = tk.ttk.LabelFrame(self, text="Setpoint channels")
             # self.setpoint_channels_frame.pack()
             # self.setpoint_channels: List[cc_gui] = [
             #     cc_gui(self.setpoint_channels_frame, _backend) for _backend in self.backend.setpoint_channel
             # ]
             # [c.pack() for c in self.setpoint_channels]
 
-            # self.actualvalue_channels_frame = tkinter.ttk.LabelFrame(self, text="AV channels")
+            # self.actualvalue_channels_frame = tk.ttk.LabelFrame(self, text="AV channels")
             # self.actualvalue_channels_frame.pack()
             # self.actualvalue_channels: List[cc_gui] = [
             #     cc_gui(self.actualvalue_channels_frame, _backend) for _backend in self.backend.actualvalue_channel
@@ -547,11 +619,7 @@ class rfg_gui(tkinter.ttk.LabelFrame):
     def btn_power(self) -> None:
         self.log.debug("btn_power")
         s = self.power_status.get() != 0
-        self.log.error("Not implemented")
-        except_notify.show(NotImplementedError("Method 'btn_power' is not implemented yet"))
-        # self.controller[self.power_controller].setpoint[
-        #         self.power_port
-        #     ][int(self.power_channel)] = s
+        self.backend.power(s)
 
     def pwr_on(self) -> None:
         self.log.debug("Power on")
@@ -565,6 +633,13 @@ class rfg_gui(tkinter.ttk.LabelFrame):
         for i, chan in enumerate(self.channels):
             if chan.sc(current):
                 self.channels[i].sc(current)
+
+    def upd(self) -> None:
+        if self.exists:
+            if self.backend.pwc.connected:
+                self.power_status_checkbutton.configure(state=tk.NORMAL)
+            else:
+                self.power_status_checkbutton.configure(state=tk.DISABLED)
 
 
 if __name__ == "__main__":

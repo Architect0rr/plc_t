@@ -1,8 +1,26 @@
-#!/usr/bin/python -O
-# Author: Daniel Mohr
-# Date: 2013-05-13, 2014-07-22
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+#
+# Copyright (C) 2013-2014 Daniel Mohr
+#
+# Copyright (C) 2023 Perevoshchikov Egor
+#
+# This file is part of PlasmaLabControl.
+#
+# PlasmaLabControl is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# PlasmaLabControl is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with PlasmaLabControl.  If not, see <http://www.gnu.org/licenses/>.
 
-__digital_controller_client_date__ = "2014-07-22"
+__digital_controller_client_date__ = "2023-10-23"
 __digital_controller_client_version__ = __digital_controller_client_date__
 
 import time
@@ -175,10 +193,12 @@ class gui(socket_communication):
             self.socket.close()
             self.connected = False
         except Exception:
+            self.log.exception("Bad sockett shutdown")
             pass
         try:
             self.main_window.destroy()
         except Exception:
+            self.log.exception("Some erorr in window destroy")
             pass
 
     def get_actualvalues(self):
@@ -270,7 +290,7 @@ class gui(socket_communication):
             self.log.debug("connected")
         except Exception:
             self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            self.log.warning("cannot connect to %s:%d" % (self.ip, self.port))
+            self.log.exception("cannot connect to %s:%d" % (self.ip, self.port))
 
     def close_connection_command(self):
         self.log.debug("disconnect to %s:%d" % (self.ip, self.port))
@@ -296,7 +316,7 @@ class gui(socket_communication):
 def main() -> None:
     parser = argparse.ArgumentParser(
         description="digital_controller_client is a client to speak with the socket server digital_controller_server.py to control the digital controller on an serial interface.",
-        epilog="Author: Daniel Mohr\nDate: %s\nLicense: GNU GENERAL PUBLIC LICENSE, Version 3, 29 June 2007\n\n%s"
+        epilog="Author: Daniel Mohr, Egor Perevoshchikov\nDate: %s\nLicense: GNU GENERAL PUBLIC LICENSE, Version 3, 29 June 2007\n\n%s"
         % (__digital_controller_client_date__, help),
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -346,7 +366,7 @@ def main() -> None:
         ch.setLevel(logging.DEBUG)  # logging.DEBUG = 10
     else:
         ch.setLevel(logging.INFO)  # logging.WARNING = 30
-    ch.setFormatter(logging.Formatter("%(asctime)s %(name)s %(message)s", datefmt="%H:%M:%S"))
+    ch.setFormatter(logging.Formatter("%(asctime)s:%(levelname)s:%(name)s: %(message)s"))
     # add the handlers to log
     log.addHandler(ch)
     log.info(

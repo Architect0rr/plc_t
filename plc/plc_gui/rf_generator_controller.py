@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2013 Daniel Mohr
+# Copyright (C) 2012-2013 Daniel Mohr
 #
 # Copyright (C) 2023 Perevoshchikov Egor
 #
@@ -26,10 +26,6 @@ class for rf-generator controller
 
 import logging
 import logging.handlers
-import time
-
-# import tkinter
-# import tkinter.ttk
 from typing import Dict, List, Any
 
 from .class_rf_generator import class_rf_generator
@@ -38,25 +34,18 @@ from .controller import controller
 
 
 class rf_generator_controller(controller):
-    """class for rf-generator controller (trinamix_tmcm_351)
-
-    Author: Daniel Mohr
-    Date: 2012-09-06
+    """
+    class for rf-generator controller (trinamix_tmcm_351)
     """
 
-    def __init__(self, config: read_config_file, _log: logging.Logger) -> None:
+    def __init__(self, config: read_config_file, _log: logging.Logger, controllers: Dict[str, controller]) -> None:
         self.log = _log
         self.log.info("init")
         self.readbytes = 4096  # read this number of bytes at a time
         self.readbytes = 16384  # read this number of bytes at a time
         self.debug = True
         self.config = config
-        self.padx = self.config.values.get("gui", "padx")
-        self.pady = self.config.values.get("gui", "pady")
-        # self.pw = pw
         self.generators_count = self.config.values.getint("RF-Generator", "count")
-        # self.debugprint = debugprint
-        self.lastupdate = time.time()
         self.maxcurrent = self.config.values.getint("RF-Generator", "maxcurrent")
         self.maxphase = self.config.values.getint("RF-Generator", "maxphase")
         self.maxcurrent_tmp = self.config.values.getint("RF-Generator", "maxcurrent_tmp")
@@ -64,8 +53,13 @@ class rf_generator_controller(controller):
         self.generator: List[class_rf_generator] = []
         for g in range(3):
             # ['RF-Generator 1','RF-Generator 2','RF-Generator 3']
-            exs = self.config.values.get(f"RF-Generator {g + 1}", "power_controller") != "-1"
-            self.generator.append(class_rf_generator(exs, g, self.config, self.log.getChild(f"rf_gen{g}")))
+            pwc = self.config.values.get(f"RF-Generator {g + 1}", "power_controller")
+            exs = pwc != "-1"
+            self.generator.append(
+                class_rf_generator(
+                    exs, g, self.config, self.log.getChild(f"rf_gen{g}"), controllers[pwc] if exs else controllers["dc"]
+                )
+            )
             if exs:
                 self.log.info("rf %d gen_device: %s" % (g, self.generator[g].gen_device))
                 self.log.info("rf %d dc_device: %s" % (g, self.generator[g].dc_device))
@@ -76,18 +70,15 @@ class rf_generator_controller(controller):
                 self.log.info("rf %d readtimeout: %s" % (g, self.generator[g].readtimeout))
                 self.log.info("rf %d writetimeout: %s" % (g, self.generator[g].writetimeout))
                 self.log.info("rf %d update_intervall: %s" % (g, self.generator[g].update_intervall))
+
+        self.connected = False
         self.setpoint: Dict[str, Any] = {}
-        # self.setpoint["connect"] = False
-        # self.setpoint["run_pattern"] = False
-        # self.setpoint["write_pattern"] = False
         self.setpoint["pattern_controller"] = None
         self.setpoint["pattern_number_of_generators"] = None
         self.setpoint["pattern_length"] = None
         self.setpoint["pattern_intervall_length"] = None
         self.setpoint["pattern"] = None
         self.actualvalue: Dict[str, Any] = {}
-        # self.actualvalue["connect"] = False
-        self.connected = False
         self.actualvalue["run_pattern"] = False
         self.actualvalue["pattern_controller"] = None
         self.actualvalue["pattern_number_of_generators"] = None
@@ -95,17 +86,16 @@ class rf_generator_controller(controller):
         self.actualvalue["pattern_intervall_length"] = None
         self.actualvalue["pattern"] = None
 
-        self.updateid: str | None = None
         self.running_pattern_position = 0
 
-    def ignite(self):
+    def ignite(self) -> None:
         self.log.warning("!!!!!!ignite plasma now!!!!!!")
         for g in range(3):
             if self.generator[g].exists:
                 self.generator[g].ignition(self.maxcurrent, self.maxcurrent_tmp)
         self.log.info("ignited???")
 
-    def write_pattern(self):
+    def write_pattern(self) -> None:
         self.log.debug(f'Creating pattern structure from {self.setpoint["pattern"]}')
         for g in range(3):
             if self.generator[g].exists:
@@ -149,7 +139,7 @@ class rf_generator_controller(controller):
         self.actualvalue["pattern_intervall_length"] = self.setpoint["pattern_intervall_length"]
         self.actualvalue["pattern"] = self.setpoint["pattern"]
 
-    def run_pattern(self):
+    def run_pattern(self) -> None:
         for g in range(3):
             if self.generator[g].exists:
                 if self.setpoint["pattern_controller"] == "microcontroller":
@@ -177,7 +167,7 @@ class rf_generator_controller(controller):
                 self.log.info(f"To rf-gen {g}: {wtg}")
                 self.generator[g].dev_gen.write(wtg.encode("utf-8"))
 
-    def unrun_pattern(self):
+    def unrun_pattern(self) -> None:
         self.generator[0].update_intervall = self.config.values.getfloat("RF-Generator 1", "update_intervall")
         if self.setpoint["pattern_controller"] == "microcontroller":
             for g in range(3):
@@ -187,37 +177,16 @@ class rf_generator_controller(controller):
                     self.log.info(f"To rf-gen {g}: {wtg}")
                     self.generator[g].dev_gen.write(wtg.encode("utf-8"))
 
-    # def update(self) -> None:
-    #     """if necessary write values self.setpoint to device
-    #     and read them from device to self.actualvalue
-
-    #     Author: Daniel Mohr
-    #     Date: 2012-09-07
-    #     """
-    #     if self.connected:
-    #         for g in range(3):
-    #             if self.generator[g].exists:
-    #                 self.generator[g].update()
-
     def start_request(self) -> None:
         self.log.debug("Start request")
         self.start()
 
-    def start(self):
+    def start(self) -> None:
         self.log.debug("Starting")
         self.connected = True
         for g in range(self.generators_count):
             if self.generator[g].exists:
                 self.generator[g].open_serial()
-
-    # def check_buttons(self):
-    #     if self.isgui:
-    #         if self.actualvalue["connect"]:
-    #             self.start_button.configure(state=tkinter.DISABLED)
-    #             self.stop_button.configure(state=tkinter.NORMAL)
-    #         else:
-    #             self.start_button.configure(state=tkinter.NORMAL)
-    #             self.stop_button.configure(state=tkinter.DISABLED)
 
     def stop_request(self) -> None:
         self.log.debug("Stop request")
