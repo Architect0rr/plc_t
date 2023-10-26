@@ -5,7 +5,8 @@ Date: 2013-03-05
 """
 
 import serial
-import tkinter
+import tkinter as tk
+from tkinter import ttk
 import time
 
 from typing import Callable, List, Dict, Union
@@ -22,7 +23,7 @@ class translation_stage_controller(controller):
     """
 
     def __init__(
-        self, config: read_config_file.read_config_file, pw: tkinter.LabelFrame, debugprint: Callable[[str], None]
+        self, config: read_config_file.read_config_file, pw: ttk.LabelFrame, debugprint: Callable[[str], None]
     ) -> None:
         # def __init__(self, config=None, pw=None, debugprint=None):
         self.readbytes = 4096  # read this number of bytes at a time
@@ -151,12 +152,10 @@ class translation_stage_controller(controller):
 
     def gui(self):
         self.isgui = True
-        self.start_button = tkinter.Button(
-            self.pw, text="open", command=self.start_request, padx=self.padx, pady=self.pady
-        )
+        self.start_button = tk.Button(self.pw, text="open", command=self.start_request, padx=self.padx, pady=self.pady)
         self.start_button.grid(row=0, column=0)
-        self.stop_button = tkinter.Button(
-            self.pw, text="close", command=self.stop_request, state=tkinter.DISABLED, padx=self.padx, pady=self.pady
+        self.stop_button = tk.Button(
+            self.pw, text="close", command=self.stop_request, state=tk.DISABLED, padx=self.padx, pady=self.pady
         )
         self.stop_button.grid(row=0, column=1)
         self.set_default_values()
@@ -184,17 +183,17 @@ class translation_stage_controller(controller):
             if self.updateid:
                 self.start_button.after_cancel(self.updateid)
             self.updateid = self.update()
-            self.start_button.configure(state=tkinter.DISABLED)
-            self.stop_button.configure(state=tkinter.NORMAL)
+            self.start_button.configure(state=tk.DISABLED)
+            self.stop_button.configure(state=tk.NORMAL)
 
     def check_buttons(self):
         if self.isgui:
             if self.actualvalue["connect"]:
-                self.start_button.configure(state=tkinter.DISABLED)
-                self.stop_button.configure(state=tkinter.NORMAL)
+                self.start_button.configure(state=tk.DISABLED)
+                self.stop_button.configure(state=tk.NORMAL)
             else:
-                self.start_button.configure(state=tkinter.NORMAL)
-                self.stop_button.configure(state=tkinter.DISABLED)
+                self.start_button.configure(state=tk.NORMAL)
+                self.stop_button.configure(state=tk.DISABLED)
 
     def stop_request(self):
         self.setpoint["connect"] = False

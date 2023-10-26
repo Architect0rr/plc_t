@@ -40,9 +40,10 @@ from ..plc_gui.rf_generator_controller import rf_generator_controller
 
 from .read_config_file import read_config_file
 from .class_rf_generator import rfg_gui
+from .utils import supports_update
 
 
-class rf_generator_gui(ttk.LabelFrame):
+class rf_generator_gui(ttk.LabelFrame, supports_update):
     """
     gui for rf_generator
     """
@@ -64,12 +65,12 @@ class rf_generator_gui(ttk.LabelFrame):
            debugprint : function
                         function to call for print debug information
         """
-        super().__init__(_root, text="RF-Generator")
+        ttk.LabelFrame.__init__(self, _root, text="RF-Generator")
+        supports_update.__init__(self)
         self.root = _root
+
         self.log = _log
         self.configs = _config
-        self.padx = self.configs.values.get("gui", "padx")
-        self.pady = self.configs.values.get("gui", "pady")
         self.rfgc: rf_generator_controller = _rfgc
         self.maxcurrent = self.configs.values.getint("RF-Generator", "maxcurrent")
         self.maxphase = self.configs.values.getint("RF-Generator", "maxphase")
@@ -79,20 +80,20 @@ class rf_generator_gui(ttk.LabelFrame):
             self.RF_only_master = False
         # create gui
 
-        self.control_frame = tk.LabelFrame(self, text="Control")
+        self.control_frame = ttk.LabelFrame(self, text="Control")
         self.control_frame.grid(column=1, row=0)
 
-        self.power_pattern_frame = tk.Frame(self)
+        self.power_pattern_frame = ttk.Frame(self)
         self.power_pattern_frame.grid(column=0, row=0)
 
         # Power
-        self.power_frame = tk.LabelFrame(self.power_pattern_frame, text="Power")
+        self.power_frame = ttk.LabelFrame(self.power_pattern_frame, text="Power")
         self.power_frame.pack()
-        self.start_controller_button = tk.Button(
+        self.start_controller_button = ttk.Button(
             self.power_frame, text="open RS232 (rfgc)", command=self.btn_open_rfgc, state=tk.NORMAL
         )
         self.start_controller_button.pack()
-        self.stop_controller_button = tk.Button(
+        self.stop_controller_button = ttk.Button(
             self.power_frame,
             text="close RS232 (rfgc)",
             command=self.btn_close_rfgc,
@@ -106,6 +107,7 @@ class rf_generator_gui(ttk.LabelFrame):
         for g in range(3):
             self.gen_frms.append(rfg_gui(self.gen_frm, self.rfgc.generator[g], self.log.getChild(f"rfgg{g}")))
             self.gen_frms[g].grid(row=0, column=g + 1)
+            self.add4update(self.gen_frms[g])
 
         # Pattern
         self.pattern_frame = ttk.LabelFrame(self.power_pattern_frame, text="Pattern")
@@ -127,10 +129,10 @@ class rf_generator_gui(ttk.LabelFrame):
         self.pattern_pattern_entry = tk.Entry(self.pattern_frame, textvariable=self.pattern_pattern_entry_val, width=20)
         self.pattern_pattern_entry.pack()
         self.pattern_pattern_entry_val.set(" - no pattern - ")
-        self.pattern_length_frame = tk.LabelFrame(self.pattern_frame, text="intervall length (us)")
+        self.pattern_length_frame = ttk.LabelFrame(self.pattern_frame, text="intervall length (us)")
         self.pattern_length_frame.pack()
         self.pattern_length_button = {}
-        self.pattern_length_button["- 100"] = tk.Button(
+        self.pattern_length_button["- 100"] = ttk.Button(
             self.pattern_length_frame, text="-100", command=self.pattern_length_cmd_down
         )
         self.pattern_length_button["- 100"].pack(side=tk.LEFT)
@@ -146,19 +148,19 @@ class rf_generator_gui(ttk.LabelFrame):
                 )
             )
         )
-        self.pattern_length_button["+ 100"] = tk.Button(
+        self.pattern_length_button["+ 100"] = ttk.Button(
             self.pattern_length_frame, text="+100", command=self.pattern_length_cmd_up
         )
         self.pattern_length_button["+ 100"].pack(side=tk.LEFT)
-        self.pattern_write_on_off_frame = tk.Frame(self.pattern_frame, padx=self.padx, pady=self.pady)
+        self.pattern_write_on_off_frame = ttk.Frame(self.pattern_frame)
         self.pattern_write_on_off_frame.pack()
 
-        self.pattern_load_button = tk.Button(
+        self.pattern_load_button = ttk.Button(
             self.pattern_write_on_off_frame, text="load", command=self.pattern_ask_for_load_file
         )
         self.pattern_load_button.pack(side=tk.LEFT)
 
-        self.pattern_write_button = tk.Button(
+        self.pattern_write_button = ttk.Button(
             self.pattern_write_on_off_frame, text="write2gen", command=self.pattern_write_to_generator
         )
         self.pattern_write_button.pack(side=tk.LEFT)
@@ -173,83 +175,71 @@ class rf_generator_gui(ttk.LabelFrame):
 
         # Control
 
-        self.ignite_plasma_button = tk.Button(
+        self.ignite_plasma_button = ttk.Button(
             self.control_frame, command=self.btn_ignite_plasma, text="ignite plasma", state=tk.DISABLED
         )
         self.ignite_plasma_button.grid(column=8, row=6)
         self.info3 = tk.Label(self.control_frame, text=" combined Changes:")
         self.info3.grid(column=5, row=1)
-        self.combined_change_button1 = tk.Button(
+        self.combined_change_button1 = ttk.Button(
             self.control_frame, command=self.btn_pwr_on, text="Pwr On", state=tk.DISABLED
         )
         self.combined_change_button1.grid(column=7, row=1)
-        self.combined_change_button2 = tk.Button(
+        self.combined_change_button2 = ttk.Button(
             self.control_frame, command=self.btn_pwr_off, text="Pwr Off", state=tk.DISABLED
         )
         self.combined_change_button2.grid(column=8, row=1)
 
-        self.combined_change_button3 = tk.Button(
+        self.combined_change_button3 = ttk.Button(
             self.control_frame, command=self.btn_rf_on, text="RF On", state=tk.DISABLED
         )
         self.combined_change_button3.grid(column=7, row=2)
-        self.combined_change_button4 = tk.Button(
+        self.combined_change_button4 = ttk.Button(
             self.control_frame, command=self.btn_rf_off, text="RF Off", state=tk.DISABLED
         )
         self.combined_change_button4.grid(column=8, row=2)
 
-        self.combined_change_button5 = tk.Button(
+        self.combined_change_button5 = ttk.Button(
             self.control_frame,
             command=lambda: self.ccc(-10),
             text="current: -10",
-            padx=self.padx,
-            pady=self.pady,
             state=tk.DISABLED,
         )
         self.combined_change_button5.grid(column=7, row=3)
-        self.combined_change_button6 = tk.Button(
+        self.combined_change_button6 = ttk.Button(
             self.control_frame,
             command=lambda: self.ccc(10),
             text="current: +10",
-            padx=self.padx,
-            pady=self.pady,
             state=tk.DISABLED,
         )
         self.combined_change_button6.grid(column=8, row=3)
 
-        self.combined_change_button7 = tk.Button(
+        self.combined_change_button7 = ttk.Button(
             self.control_frame,
             command=lambda: self.ccc(-100),
             text="current: -100",
-            padx=self.padx,
-            pady=self.pady,
             state=tk.DISABLED,
         )
         self.combined_change_button7.grid(column=7, row=4)
-        self.combined_change_button8 = tk.Button(
+        self.combined_change_button8 = ttk.Button(
             self.control_frame,
             command=lambda: self.ccc(100),
             text="current: +100",
-            padx=self.padx,
-            pady=self.pady,
             state=tk.DISABLED,
         )
         self.combined_change_button8.grid(column=8, row=4)
 
-        self.combined_change_button9 = tk.Button(
+        self.combined_change_button9 = ttk.Button(
             self.control_frame,
             command=lambda: self.ccc(-1000),
             text="current: -1000",
-            padx=self.padx,
-            pady=self.pady,
             state=tk.DISABLED,
         )
         self.combined_change_button9.grid(column=7, row=5)
-        self.combined_change_button10 = tk.Button(
+        self.combined_change_button10 = ttk.Button(
             self.control_frame,
             command=lambda: self.ccc(1000),
             text="current: +1000",
-            padx=self.padx,
-            pady=self.pady,
             state=tk.DISABLED,
         )
         self.combined_change_button10.grid(column=8, row=5)
@@ -495,9 +485,9 @@ class rf_generator_gui(ttk.LabelFrame):
         # ignite plasma
         self.rfgc.ignite()
 
-    def upd(self) -> None:
-        for gen_frm in self.gen_frms:
-            gen_frm.upd()
+    # def upd(self) -> None:
+    #     for gen_frm in self.gen_frms:
+    #         gen_frm.upd()
 
     def pattern_change_btn(self, abc: tk.StringVar) -> None:
         if self.pattern_controller_var.get() == "microcontroller":

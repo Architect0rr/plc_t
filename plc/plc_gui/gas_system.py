@@ -27,13 +27,14 @@ gui for controlling gas system
 
 import logging
 import tkinter
-import tkinter.ttk
+from tkinter import ttk
 
 from typing import Dict
 
 from ..plc_tools.conversion import b2onoff, msccm2volt, volt2msccm
 from .read_config_file import read_config_file
 from .controller import controller
+from .utils import supports_update
 
 
 class gs:
@@ -192,14 +193,14 @@ class gs:
             return self.controller[self.mfcsc].actualvalue[self.mfcsp]
 
 
-class gas_system(tkinter.ttk.LabelFrame):
+class gas_system(ttk.LabelFrame, supports_update):
     """
     gui for gas system control
     """
 
     def __init__(
         self,
-        _root: tkinter.ttk.Frame,
+        _root: ttk.Frame,
         _backend: gs,
         _log: logging.Logger,
     ) -> None:
@@ -213,9 +214,11 @@ class gas_system(tkinter.ttk.LabelFrame):
            debugprint : function
                         function to call for print debug information
         """
-        super().__init__(master=_root, text="GAS SYS")
-        self.backend = _backend
+        ttk.LabelFrame.__init__(self, _root, text="GAS SYS")
+        supports_update.__init__(self)
         self.root = _root
+
+        self.backend = _backend
         # create gui
         self.pumps_frame = tkinter.Frame(self)
         self.pumps_frame.pack()

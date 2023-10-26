@@ -35,11 +35,12 @@ from queue import Queue
 from abc import abstractmethod
 from typing import Callable, List, TypeVar, Dict, Any
 import tkinter
-import tkinter.ttk
+from tkinter import ttk
 
 from .read_config_file import read_config_file
 from ..plc_tools.plc_socket_communication import socket_communication, socketlock
 from .misc.splash import Splasher
+from .utils import supports_exit, supports_update
 
 T = TypeVar("T")
 
@@ -326,12 +327,14 @@ class socket_communication_class(socket_communication):
         return self.__stop()
 
 
-class scs_gui(tkinter.ttk.LabelFrame):
+class scs_gui(ttk.LabelFrame, supports_exit):
     def __init__(
-        self, _root: tkinter.LabelFrame, backend: socket_communication_class, splasher: Splasher, _name: str
+        self, _root: ttk.LabelFrame, backend: socket_communication_class, splasher: Splasher, _name: str
     ) -> None:
-        super().__init__(_root, text=_name)
+        ttk.LabelFrame.__init__(self, _root, text=_name)
+        supports_exit.__init__(self)
         self.root = _root
+
         self.backend = backend
         self.splasher = splasher
         self.start_button = tkinter.Button(self, text="Start", command=self.start)
@@ -356,11 +359,8 @@ class scs_gui(tkinter.ttk.LabelFrame):
 
     def __stop(self, q: Queue) -> bool:
         rt = self.backend.stop_request()
-        # self.backend.log.warning("GUI: splash setting stop")
         self.splasher.splash_set_stop()
-        # self.backend.log.warning("GUI: splash setted stop, getting item from queue")
         q.put(rt)
-        # self.backend.log.warning("GUI: got item from queue")
         return rt
 
     def start(self) -> None:
@@ -371,11 +371,7 @@ class scs_gui(tkinter.ttk.LabelFrame):
         self.splasher.splash_stop()
         thr.join()
         rt: bool = q.get()
-        # with concurrent.futures.ThreadPoolExecutor() as executor:
-        #     future = executor.submit(self.__start)
-        #     self.splasher.splash_start()
-        #     self.splasher.splash_stop()
-        #     rt: bool = future.result()
+
         if rt:
             self.start_button.configure(state=tkinter.DISABLED)
             self.stop_button.configure(state=tkinter.NORMAL)
@@ -391,19 +387,16 @@ class scs_gui(tkinter.ttk.LabelFrame):
         self.splasher.splash_stop()
         thr.join()
         rt: bool = q.get()
-        # with concurrent.futures.ThreadPoolExecutor() as executor:
-        #     future = executor.submit(self.__stop)
-        #     self.splasher.splash_start()
-        #     self.backend.log.warning("Splash start ended")
-        #     self.splasher.splash_stop()
-        #     self.backend.log.warning("Splash stopped")
-        #     rt: bool = future.result()
+
         if rt:
             self.stop_button.configure(state=tkinter.DISABLED)
             self.start_button.configure(state=tkinter.NORMAL)
         else:
             self.stop_button.configure(state=tkinter.NORMAL)
             self.start_button.configure(state=tkinter.DISABLED)
+
+    def exit(self) -> bool:
+        return self.backend.stop_request()
 
 
 if __name__ == "__main__":

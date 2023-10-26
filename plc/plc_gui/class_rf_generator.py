@@ -37,6 +37,7 @@ from tkinter import ttk
 from .read_config_file import read_config_file
 from .controller import controller
 from .misc import except_notify
+from .utils import supports_update
 
 
 T = TypeVar("T")
@@ -578,9 +579,12 @@ class class_rf_generator:
         self.pwc.setpoint[self.power_port][self.power_channel] = state
 
 
-class rfg_gui(ttk.LabelFrame):
+class rfg_gui(ttk.LabelFrame, supports_update):
     def __init__(self, _root: ttk.LabelFrame, _backend: class_rf_generator, _log: logging.Logger) -> None:
-        super().__init__(_root, text="GEN_" + str(_backend.number + 1) if _backend.exists else "NE")
+        ttk.LabelFrame.__init__(self, _root, text="GEN_" + str(_backend.number + 1) if _backend.exists else "NE")
+        supports_update.__init__(self)
+        self.root = _root
+
         self.backend = _backend
         self.log = _log
         self.exists = self.backend.exists
