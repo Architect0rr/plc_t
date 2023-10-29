@@ -34,7 +34,7 @@ from typing import Dict
 from ..plc_tools.conversion import b2onoff, msccm2volt, volt2msccm
 from .read_config_file import read_config_file
 from .controller import controller
-from .utils import supports_update
+from .utils import Master
 
 
 class gs:
@@ -193,7 +193,7 @@ class gs:
             return self.controller[self.mfcsc].actualvalue[self.mfcsp]
 
 
-class gas_system(ttk.LabelFrame, supports_update):
+class gas_system(ttk.LabelFrame, Master):
     """
     gui for gas system control
     """
@@ -201,8 +201,8 @@ class gas_system(ttk.LabelFrame, supports_update):
     def __init__(
         self,
         _root: ttk.Frame,
+        master: Master,
         _backend: gs,
-        _log: logging.Logger,
     ) -> None:
         """__init__(self,config=None,pw=None,debugprint=None)
 
@@ -215,8 +215,7 @@ class gas_system(ttk.LabelFrame, supports_update):
                         function to call for print debug information
         """
         ttk.LabelFrame.__init__(self, _root, text="GAS SYS")
-        supports_update.__init__(self)
-        self.root = _root
+        Master.__init__(self, master, custom_name="GS")
 
         self.backend = _backend
         # create gui

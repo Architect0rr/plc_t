@@ -37,7 +37,7 @@ from tkinter import ttk
 from .read_config_file import read_config_file
 from .controller import controller
 from .misc import except_notify
-from .utils import supports_update
+from .utils import Master
 
 
 T = TypeVar("T")
@@ -362,24 +362,24 @@ class class_rf_generator:
             self.writetimeout: float = config.values.getfloat(f"RF-Generator {number + 1}", "writetimeout")
             # return
             self.readbytes = 4096
-            self.dev_gen = serial.Serial(
-                port=self.gen_device,
-                baudrate=self.boudrate,
-                bytesize=self.databits,
-                parity=self.parity,
-                stopbits=self.stopbits,
-                timeout=self.readtimeout,
-                write_timeout=self.writetimeout,
-            )
-            self.dev_dc = serial.Serial(
-                port=self.dc_device,
-                baudrate=self.boudrate,
-                bytesize=self.databits,
-                parity=self.parity,
-                stopbits=self.stopbits,
-                timeout=self.readtimeout,
-                write_timeout=self.writetimeout,
-            )
+            # self.dev_gen = serial.Serial(
+            #     port=self.gen_device,
+            #     baudrate=self.boudrate,
+            #     bytesize=self.databits,
+            #     parity=self.parity,
+            #     stopbits=self.stopbits,
+            #     timeout=self.readtimeout,
+            #     write_timeout=self.writetimeout,
+            # )
+            # self.dev_dc = serial.Serial(
+            #     port=self.dc_device,
+            #     baudrate=self.boudrate,
+            #     bytesize=self.databits,
+            #     parity=self.parity,
+            #     stopbits=self.stopbits,
+            #     timeout=self.readtimeout,
+            #     write_timeout=self.writetimeout,
+            # )
 
     @if_exists_non
     @if_gen_enabled_non
@@ -535,6 +535,15 @@ class class_rf_generator:
     @if_exists_non
     def rf_on(self) -> None:
         self.gen_enabled = True
+        self.dev_gen = serial.Serial(
+            port=self.gen_device,
+            baudrate=self.boudrate,
+            bytesize=self.databits,
+            parity=self.parity,
+            stopbits=self.stopbits,
+            timeout=self.readtimeout,
+            write_timeout=self.writetimeout,
+        )
         if not self.dev_gen.is_open:
             self.dev_gen.open()
         self.__write_gen("@E")
@@ -549,6 +558,15 @@ class class_rf_generator:
     @if_exists_non
     def dc_on(self) -> None:
         self.dc_enabled = True
+        self.dev_dc = serial.Serial(
+            port=self.dc_device,
+            baudrate=self.boudrate,
+            bytesize=self.databits,
+            parity=self.parity,
+            stopbits=self.stopbits,
+            timeout=self.readtimeout,
+            write_timeout=self.writetimeout,
+        )
         if not self.dev_dc.is_open:
             self.dev_dc.open()
         self.__write_dc("#O")
@@ -579,14 +597,12 @@ class class_rf_generator:
         self.pwc.setpoint[self.power_port][self.power_channel] = state
 
 
-class rfg_gui(ttk.LabelFrame, supports_update):
-    def __init__(self, _root: ttk.LabelFrame, _backend: class_rf_generator, _log: logging.Logger) -> None:
+class rfg_gui(ttk.LabelFrame, Master):
+    def __init__(self, _root: ttk.LabelFrame, master: Master, _backend: class_rf_generator) -> None:
         ttk.LabelFrame.__init__(self, _root, text="GEN_" + str(_backend.number + 1) if _backend.exists else "NE")
-        supports_update.__init__(self)
-        self.root = _root
-
+        Master.__init__(self, master, custom_name="RFG")
         self.backend = _backend
-        self.log = _log
+
         self.exists = self.backend.exists
         if self.exists:
             self.power_status: tk.IntVar = tk.IntVar()

@@ -62,16 +62,16 @@ class electrode_motion_controller(controller):
 
         self.readtimeout = self.config.values.getfloat("electrode motion controller", "readtimeout")
         self.writetimeout = self.config.values.getfloat("electrode motion controller", "writetimeout")
-        self.device = serial.Serial(
-            port=None,
-            baudrate=self.boudrate,
-            bytesize=self.databits,
-            parity=self.parity,
-            stopbits=self.stopbits,
-            timeout=self.readtimeout,
-            write_timeout=self.writetimeout,
-        )
-        self.device.port = self.devicename
+        # self.device = serial.Serial(
+        #     port=None,
+        #     baudrate=self.boudrate,
+        #     bytesize=self.databits,
+        #     parity=self.parity,
+        #     stopbits=self.stopbits,
+        #     timeout=self.readtimeout,
+        #     write_timeout=self.writetimeout,
+        # )
+        # self.device.port = self.devicename
         self.T_off = self.config.values.getint("electrode motion controller", "T_off")
         self.update_intervall = self.config.values.getint("electrode motion controller", "update_intervall")
         self.disabled_lower_guard_ring = (
@@ -115,6 +115,16 @@ class electrode_motion_controller(controller):
 
     def start(self) -> bool:
         if not self.connected:
+            self.device = serial.Serial(
+                port=None,
+                baudrate=self.boudrate,
+                bytesize=self.databits,
+                parity=self.parity,
+                stopbits=self.stopbits,
+                timeout=self.readtimeout,
+                write_timeout=self.writetimeout,
+            )
+            self.device.port = self.devicename
             self.log.debug(f"Starting electrode motion controlling on port {self.devicename}")
             try:
                 self.device.open()

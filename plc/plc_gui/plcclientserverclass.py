@@ -40,7 +40,7 @@ from tkinter import ttk
 from .read_config_file import read_config_file
 from ..plc_tools.plc_socket_communication import socket_communication, socketlock
 from .misc.splash import Splasher
-from .utils import supports_exit, supports_update
+from .utils import Master
 
 T = TypeVar("T")
 
@@ -327,16 +327,14 @@ class socket_communication_class(socket_communication):
         return self.__stop()
 
 
-class scs_gui(ttk.LabelFrame, supports_exit):
+class scs_gui(ttk.LabelFrame, Master):
     def __init__(
-        self, _root: ttk.LabelFrame, backend: socket_communication_class, splasher: Splasher, _name: str
+        self, _root: ttk.LabelFrame, master: Master, backend: socket_communication_class, _name: str
     ) -> None:
         ttk.LabelFrame.__init__(self, _root, text=_name)
-        supports_exit.__init__(self)
-        self.root = _root
-
+        Master.__init__(self, master, custom_name=_name)
         self.backend = backend
-        self.splasher = splasher
+
         self.start_button = tkinter.Button(self, text="Start", command=self.start)
         self.start_button.grid(row=0, column=0)
         self.stop_button = tkinter.Button(self, text="Stop", command=self.stop, state=tkinter.DISABLED)

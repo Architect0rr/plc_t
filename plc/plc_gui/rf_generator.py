@@ -24,26 +24,23 @@
 gui for RF-Generator
 """
 
-import configparser
-import logging
-import logging.handlers
 import os
 import os.path
 import re
 import string
+import configparser
 import tkinter.filedialog
+from typing import List, Dict, Any
 import tkinter as tk
 from tkinter import ttk
-from typing import List, Dict, Any
+
 
 from ..plc_gui.rf_generator_controller import rf_generator_controller
-
-from .read_config_file import read_config_file
 from .class_rf_generator import rfg_gui
-from .utils import supports_update
+from .utils import Master
 
 
-class rf_generator_gui(ttk.LabelFrame, supports_update):
+class rf_generator_gui(ttk.LabelFrame, Master):
     """
     gui for rf_generator
     """
@@ -51,9 +48,8 @@ class rf_generator_gui(ttk.LabelFrame, supports_update):
     def __init__(
         self,
         _root: ttk.Frame,
-        _config: read_config_file,
+        master: Master,
         _rfgc: rf_generator_controller,
-        _log: logging.Logger,
     ) -> None:
         """__init__(self,config=None,pw=None,debugprint=None,controller=None)
 
@@ -66,11 +62,8 @@ class rf_generator_gui(ttk.LabelFrame, supports_update):
                         function to call for print debug information
         """
         ttk.LabelFrame.__init__(self, _root, text="RF-Generator")
-        supports_update.__init__(self)
-        self.root = _root
+        Master.__init__(self, master, custom_name="RFGG")
 
-        self.log = _log
-        self.configs = _config
         self.rfgc: rf_generator_controller = _rfgc
         self.maxcurrent = self.configs.values.getint("RF-Generator", "maxcurrent")
         self.maxphase = self.configs.values.getint("RF-Generator", "maxphase")
@@ -105,9 +98,8 @@ class rf_generator_gui(ttk.LabelFrame, supports_update):
         self.gen_frms: List[rfg_gui] = []
         # ['RF-Generator 1','RF-Generator 2','RF-Generator 3']
         for g in range(3):
-            self.gen_frms.append(rfg_gui(self.gen_frm, self.rfgc.generator[g], self.log.getChild(f"rfgg{g}")))
+            self.gen_frms.append(rfg_gui(self.gen_frm, self, self.rfgc.generator[g]))
             self.gen_frms[g].grid(row=0, column=g + 1)
-            self.add4update(self.gen_frms[g])
 
         # Pattern
         self.pattern_frame = ttk.LabelFrame(self.power_pattern_frame, text="Pattern")

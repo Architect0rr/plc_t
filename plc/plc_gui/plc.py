@@ -32,9 +32,8 @@ import threading
 import subprocess
 import configparser
 from pathlib import Path
+from types import FrameType
 from typing import Dict, List, NoReturn
-
-import PIL.ImageTk  # type: ignore
 
 import tkinter as tk
 import tkinter.messagebox
@@ -44,50 +43,47 @@ from tkinter import ttk
 from . import gas_system
 from . import controller
 from . import rf_generator
-from .read_config_file import read_config_file
+from . import base_controller
 from . import electrode_motion
 from . import translation_stage
 from . import diagnostic_particles
-from .plcclientserverclass import scs_gui
 from ..plc_tools import plclogclasses
-from . import base_controller
+from .plcclientserverclass import scs_gui
+from .utils import Master
+from .read_config_file import read_config_file
 from .misc.splash import PassiveSplash, Splasher
-from .utils import supports_update, supports_exit
 
 # from . import camera
 # from . import acceleration_sensor
 
 
-class PLC(tk.Tk, supports_update, supports_exit):
+class PLC(tk.Tk, Master):
     """
     class for the GUI for plc
     """
 
     @classmethod
     def main(cls, log: logging.Logger, system_conffile: Path, conffile: Path) -> NoReturn:
-        app = cls(log, system_conffile, conffile)
+        configs = read_config_file(system_wide_ini_file=system_conffile.as_posix(), user_ini_file=conffile.as_posix())
+        app = cls(log, configs, conffile)
         app.mainloop()
         app.exit()
 
-    def __init__(self, _log: logging.Logger, system_conffile: Path, conffile: Path) -> None:
+    def __init__(self, _log: logging.Logger, _configs: read_config_file, conffile: Path) -> None:
         """
         GUI initialization
         """
         tk.Tk.__init__(self)
-        supports_exit.__init__(self)
-        supports_update.__init__(self)
+
+        self.splasher = Splasher(self)
+        Master.__init__(self, log=_log, configs=_configs, splasher=self.splasher)
 
         self.resizable(True, True)
         self.withdraw()
         self.passivesplash = PassiveSplash(self)
-        self.splasher = Splasher(self)
 
-        self.log = _log
         self.log.debug("Initializing GUI")
         self.conffile = conffile
-        self.configs = read_config_file(
-            system_wide_ini_file=system_conffile.as_posix(), user_ini_file=conffile.as_posix()
-        )
 
         self.lh = plclogclasses.LabelLogHandler(n=self.configs.values.getint("gui", "debug_area_height"))
         self.lh.setLevel(logging.DEBUG)
@@ -108,11 +104,11 @@ class PLC(tk.Tk, supports_update, supports_exit):
         self.screeny = self.main_window.winfo_screenheight()
         self.main_window.title("plc - PlasmaLabControl (development 11221026)")
 
-        self.menu = Menu(self.main_window)
-        self.main_window.config(menu=self.menu)
-
-        self.toolbar = Toolbar(self.main_window)
+        self.toolbar = Toolbar(self.main_window, self)
         self.toolbar.pack(expand=True, fill=tk.X)
+
+        self.menu = Menu(self.main_window, self)
+        self.main_window.config(menu=self.menu)
 
         # # create acceleration sensor
         # self.info_area_acceleration_sensor_vals = []
@@ -131,29 +127,27 @@ class PLC(tk.Tk, supports_update, supports_exit):
         #     self.info_area_acceleration_sensor_vals[i].set("acc%d=(?.??,?.??,?.??)" % (i + 1))
         #     self.info_area_acceleration_sensors[i].pack(side=tk.RIGHT)
 
-        self.notebook = Notebook(self.main_window)
-        self.add4update(self.notebook)
-        self.add4exit(self.notebook)
+        self.notebook = Notebook(self.main_window, self)
 
         # create camera tabs
-        self.camera_notebook_index = []
-        self.camera_tabs = []
+        self.camera_notebook_index: List[int] = []
+        self.camera_tabs: List[ttk.Frame] = []
         self.notebook.pack(expand=True, fill=tk.X)
         self.notebook.select(0)
 
         index = 0
         for i in range(self.configs.number_of_cameras):
             index += 1
-            self.camera_tabs += [tk.Frame(self.notebook)]
+            self.camera_tabs += [ttk.Frame(self.notebook)]
             self.camera_notebook_index += [index]
             self.notebook.add(self.camera_tabs[i], text="cam %d" % (i + 1), sticky="NW")
 
         # create acceleration sensor tabs
-        self.acceleration_sensor_tabs = []
-        self.acceleration_sensor_notebook_index = []
+        self.acceleration_sensor_tabs: List[ttk.Frame] = []
+        self.acceleration_sensor_notebook_index: List[int] = []
         for i in range(self.configs.number_of_acceleration_sensor):
             index += 1
-            self.acceleration_sensor_tabs += [tk.Frame(self.notebook)]
+            self.acceleration_sensor_tabs += [ttk.Frame(self.notebook)]
             self.acceleration_sensor_notebook_index += [index]
             self.notebook.add(self.acceleration_sensor_tabs[i], text="acc. %d" % (i + 1), sticky="NW")
 
@@ -161,18 +155,8 @@ class PLC(tk.Tk, supports_update, supports_exit):
         self.create_debug_area()
 
         # setpoints
-        self.setpoints_choose = None
+        # self.setpoints_choose = 0
 
-        self.default_setpoints_file = self.configs.values.get("ini", "default_setpoints_file")
-        if self.default_setpoints_file != "-1":
-            self.log.debug("Default setpoint file available")
-            self.read_setpoints_file()
-        else:
-            self.log.debug("No default setpoints file available")
-
-
-        if self.configs.values.get("ini", "key_binding_setpoints_set") != "-1":
-            self.main_window.bind(self.configs.values.get("ini", "key_binding_setpoints_set"), self.set_setpoints)
         # # connect to digital controller on startup
         # if self.configs.values.getboolean("dc", "connect_server"):
         #     self.controller["dc"].start_request()
@@ -219,15 +203,14 @@ class PLC(tk.Tk, supports_update, supports_exit):
             self.log.debug("start environment_sensor_5 '%s'" % (" ".join(c)))
             # prc_srv = subprocess.Popen(c)
 
-    def create_debug_area(self):
+    def create_debug_area(self) -> None:
         if int(self.debug) == 1:
             self.log.debug("create debug area")
             self.debug_infos = ttk.Frame(self.main_window, relief="solid", borderwidth=1)
             self.debug = 1
-            self.debug_infos_message = tk.Label(
+            self.debug_infos_message = ttk.Label(
                 self.debug_infos,
                 textvariable=self.debugtext,
-                height=self.configs.values.getint("gui", "debug_area_height"),
                 width=self.configs.values.getint("gui", "debug_area_width"),
                 anchor="sw",
                 justify=tk.LEFT,
@@ -235,7 +218,7 @@ class PLC(tk.Tk, supports_update, supports_exit):
             # self.debugtext.set("")
             self.debug_infos_message.pack()
             self.debug_infos.pack()
-            plclogclasses.LabelLogHandler.set_out(self.lh, self.debugtext)
+            plclogclasses.LabelLogHandler.set_out(self.lh, self.debug_infos_message)
 
     def debugprint(self, o: str) -> None:
         self.log.debug(o)
@@ -247,7 +230,7 @@ class PLC(tk.Tk, supports_update, supports_exit):
         self.log.debug("Exit button pressed, showing promt")
         if tkinter.messagebox.askyesno("Exit?", "Exit the Program?"):
             self.log.debug("Exiting...")
-            self.log = self.log.getChild("exit")
+            self.log: logging.Logger = self.log.getChild("exit")
             self.exit()
 
     def about(self) -> None:
@@ -270,8 +253,9 @@ class PLC(tk.Tk, supports_update, supports_exit):
 
     def bexec(self, args: List[str]) -> None:
         self.log.getChild("bexec").debug(f"Starting '{args[0]}' in background")
-        pid = subprocess.Popen(args).pid
-        self.log.getChild("bexec").debug(f"Started '{args[0]}' with PID {pid}")
+        with subprocess.Popen(args) as prc:
+            pid = prc.pid
+            self.log.getChild("bexec").debug(f"Started '{args[0]}' with PID {pid}")
 
     # camera_client.py
     def start_extern_program_camera_client(self) -> None:
@@ -308,13 +292,13 @@ class PLC(tk.Tk, supports_update, supports_exit):
         c = self.configs.values.get("ini", "extern_program_rawmovieviewer")
         self.bexec([c])
 
-    def sighandler(self, signum, frame) -> None:
+    def sighandler(self, signum: int, frame: FrameType | None) -> None:
         self.debugprint("signum = %d" % signum)
         # signal.alarm(1)
 
     def upd(self) -> None:
         """update every dynamic read values"""
-        super().upd()
+        Master.upd(self)
 
         # self.diagnostic_particles.update()
         self.toolbar.set_info_load("load=(%2.2f,%2.2f,%2.2f)" % os.getloadavg())
@@ -329,79 +313,16 @@ class PLC(tk.Tk, supports_update, supports_exit):
     #     if self.translation_stage_device != "-1":
     #         self.translation_stage.check_buttons()
 
-    def read_setpoints(self) -> None:
-        self.log.debug("ask for file to read setpoints from")
-        f = tkinter.filedialog.askopenfilename(
-            defaultextension=".cfg", initialdir="~", title="read setpoints from file"
-        )
-        try:
-            if len(f) > 0:
-                self.default_setpoints_file = f
-                self.read_setpoints_file()
-        except Exception:
-            pass
-
-    def read_setpoints_file(self) -> None:
-        # read setpoints file
-        self.log.debug("read setpoints from file '%s'" % self.default_setpoints_file)
-        self.setpoints = configparser.ConfigParser()
-        self.setpoints.read(os.path.expanduser(self.default_setpoints_file))
-        if len(self.setpoints.sections()) > 0:
-            self.log.debug("found %d sections" % len(self.setpoints.sections()))
-            self.__choose_setpoint(i=0)
-            self.load_setpoints()
-            self.toolbar.setpoints_area.unlock()
-
-    def __choose_setpoint(self, i=0) -> str:
-        self.setpoints_choose = i
-        s = self.setpoints.sections()[i]
-        self.log.debug("choose setpoints %d: %s" % (i, s))
-        if self.setpoints.has_option(s, "load_set") and self.setpoints.getboolean(s, "load_set"):
-            self.set_setpoints()
-            return s
-        else:
-            return "None"
-
-    def choose_previous_setpoint(self) -> str:
-        i = self.setpoints_choose
-        if i is not None:
-            i = max(0, i - 1)
-            if i != self.setpoints_choose:
-                return self.__choose_setpoint(i=i)
-            else:
-                return "None"
-        else:
-            return "None"
-
-    def choose_next_setpoint(self) -> str:
-        i = self.setpoints_choose
-        if i is not None:
-            i = min((len(self.setpoints.sections()) - 1, i + 1))
-            if i != self.setpoints_choose:
-                return self.__choose_setpoint(i=i)
-            else:
-                return "None"
-        else:
-            return "None"
-
-    def load_setpoints(self):
-        if self.setpoints_choose is not None:
-            i = self.setpoints_choose
-            s = self.setpoints.sections()[i]
-            self.log.debug("load setpoints %d: %s" % (i, s))
-            if self.setpoints.has_option(s, "load_set") and self.setpoints.getboolean(s, "load_set"):
-                self.set_setpoints()
-
-    def switch_debug_infos_off(self):
+    def switch_debug_infos_off(self) -> None:
         self.debug = 0
-        plclogclasses.LabelLogHandler.set_out(self.lh, None)
+        # plclogclasses.LabelLogHandler.set_out(self.lh, None)
         self.debug_infos.destroy()
 
-    def switch_debug_infos_on(self):
+    def switch_debug_infos_on(self) -> None:
         self.debug = 1
         self.create_debug_area()
 
-    def set_setpoints(self, event=None):
+    def set_setpoints(self, event: tk.Event) -> None:
         pass
 
     #     """set setpoints
@@ -461,39 +382,28 @@ class PLC(tk.Tk, supports_update, supports_exit):
     #                 self.rf_generator.ignite_plasma()
 
 
-class Notebook(ttk.Notebook, supports_exit, supports_update):
-    def __init__(self, _root: PLC) -> None:
+class Notebook(ttk.Notebook, Master):
+    def __init__(self, _root: tk.Misc, master: Master) -> None:
         ttk.Notebook.__init__(self, _root)
-        supports_update.__init__(self)
-        supports_exit.__init__(self)
-        self.root = _root
+        Master.__init__(self, master)
 
-        self.maintab = MainTab(self)
+        self.maintab = MainTab(self, self)
         self.add(self.maintab, text="Main", sticky="NW")
-        self.add4exit(self.maintab)
-        self.add4update(self.maintab)
 
 
-class MainTab(ttk.Frame, supports_exit, supports_update):
-    def __init__(self, _root: Notebook) -> None:
+class MainTab(ttk.Frame, Master):
+    def __init__(self, _root: tk.Misc, master: Master) -> None:
         ttk.Frame.__init__(self, _root, relief="solid", borderwidth=1)
-        supports_exit.__init__(self)
-        supports_update.__init__(self)
-        self.root = _root
-
-        self.configs = self.root.root.configs
-        self.log = self.root.root.log
+        Master.__init__(self, master)
 
         self.master_paned_window = tk.PanedWindow(self, orient=tk.HORIZONTAL)
         self.master_paned_window.pack()
 
-        self.cameras_window = Cameras(self, "Cameras")
-        self.master_paned_window.add(self.cameras_window)
+        # self.cameras_window = Cameras(self, "Cameras")
+        # self.master_paned_window.add(self.cameras_window)  # type: ignore
 
-        self.control = Control(self)
+        self.control = Control(self, self)
         self.master_paned_window.add(self.control)
-        self.add4exit(self.control)
-        self.add4update(self.control)
 
         # create block for acceleration sensor
         # self.acceleration_sensor: List[acceleration_sensor.acceleration_sensor] = []
@@ -514,16 +424,10 @@ class MainTab(ttk.Frame, supports_exit, supports_update):
         #     )
 
 
-class Control(ttk.Frame, supports_update, supports_exit):
-    def __init__(self, _root: MainTab) -> None:
+class Control(ttk.Frame, Master):
+    def __init__(self, _root: ttk.Frame, master: Master) -> None:
         ttk.Frame.__init__(self, _root, relief="solid", borderwidth=1)
-        supports_update.__init__(self)
-        supports_exit.__init__(self)
-        self.root = _root
-
-        self.configs = self.root.root.root.configs
-        self.log = self.root.root.root.log
-        self.splasher = self.root.root.root.splasher
+        Master.__init__(self, master)
 
         self.control_window1 = ttk.Frame(self, relief="solid", borderwidth=1)
         self.control_window1.pack()
@@ -536,15 +440,13 @@ class Control(ttk.Frame, supports_update, supports_exit):
 
         self.digital_controller = controller.digital_controller(self.log.getChild("dc"), self.configs)
         self.controller["dc"] = self.digital_controller
-        self.dc_gui = scs_gui(self.controller_window, self.digital_controller, self.splasher, "DC")
+        self.dc_gui = scs_gui(self.controller_window, self, self.digital_controller, "DC")
         self.dc_gui.grid(column=0, row=0)
-        self.add4exit(self.dc_gui)
 
         self.multi_purpose_controller = controller.multi_purpose_controller(self.log.getChild("mpc"), self.configs)
         self.controller["mpc"] = self.multi_purpose_controller
-        self.mpc_gui = scs_gui(self.controller_window, self.multi_purpose_controller, self.splasher, "MPC")
+        self.mpc_gui = scs_gui(self.controller_window, self, self.multi_purpose_controller, "MPC")
         self.mpc_gui.grid(column=1, row=0)
-        self.add4exit(self.mpc_gui)
 
         # electrode motion controller
         self.electrode_motion_controller_device = self.configs.values.get("electrode motion controller", "devicename")
@@ -556,30 +458,25 @@ class Control(ttk.Frame, supports_update, supports_exit):
             self.controller["emc"] = self.electrode_motion_controller
             self.electrode_motion = electrode_motion.electrode_motion(
                 self,
-                self.log.getChild("emc"),
+                self,
                 self.electrode_motion_controller,
             )
             self.electrode_motion.pack()
-        self.add4exit(self.electrode_motion)
 
         self.gas_system = gas_system.gs(self.configs, self.log.getChild("GS"), self.controller)
         self.gs_gui = gas_system.gas_system(
             self.control_window1,
+            self,
             self.gas_system,
-            self.log.getChild("GS"),
         )
         self.gs_gui.grid(column=1, row=0)
-        self.add4update(self.gs_gui)
 
         self.rf_generator_controller = controller.rf_generator_controller(
             self.configs, self.log.getChild("rfgc"), self.controller
         )
         self.controller["rfgc"] = self.rf_generator_controller
-        self.rf_generator = rf_generator.rf_generator_gui(
-            self, self.configs, self.controller["rfgc"], self.log.getChild("rfgg")
-        )
+        self.rf_generator = rf_generator.rf_generator_gui(self, self, self.controller["rfgc"])
         self.rf_generator.pack()
-        self.add4update(self.rf_generator)
 
         # ----------------------------
         # translation stage controller
@@ -598,16 +495,6 @@ class Control(ttk.Frame, supports_update, supports_exit):
             self.controller["tsc"].gui()
             self.controller["tsc"].set_default_values()
 
-        # create block for diagnostic/particles
-        self.diagnostic_particles_window = ttk.LabelFrame(self, text="Diagnostics/Particles")
-        self.diagnostic_particles_window.pack()
-        self.diagnostic_particles = diagnostic_particles.diagnostic_particles(
-            config=self.configs,
-            pw=self.diagnostic_particles_window,
-            debugprint=self.debugprint,
-            controller=self.controller,
-        )
-
         # create block for translation stage
         if self.translation_stage_device != "-1":
             self.translation_stage_window = ttk.LabelFrame(self, text="Translation Stage")
@@ -619,25 +506,35 @@ class Control(ttk.Frame, supports_update, supports_exit):
                 controller=self.controller,
             )
 
+        # create block for diagnostic/particles
+        self.diagnostic_particles_window = ttk.LabelFrame(self, text="Diagnostics/Particles")
+        self.diagnostic_particles_window.pack()
+        self.diagnostic_particles = diagnostic_particles.diagnostic_particles(
+            config=self.configs,
+            pw=self.diagnostic_particles_window,
+            debugprint=self.debugprint,
+            controller=self.controller,
+        )
+
         if self.configs.values.get("dispensers", "key_binding_dispenser1") != "-1":
             self.bind(
                 self.configs.values.get("dispensers", "key_binding_dispenser1"),
-                self.shake_dispenser1,
+                self.shake_dispenser1,  # type: ignore
             )
         if self.configs.values.get("dispensers", "key_binding_dispenser2") != "-1":
             self.bind(
                 self.configs.values.get("dispensers", "key_binding_dispenser2"),
-                self.shake_dispenser2,
+                self.shake_dispenser2,  # type: ignore
             )
         if self.configs.values.get("dispensers", "key_binding_dispenser3") != "-1":
             self.bind(
                 self.configs.values.get("dispensers", "key_binding_dispenser3"),
-                self.shake_dispenser3,
+                self.shake_dispenser3,  # type: ignore
             )
         if self.configs.values.get("dispensers", "key_binding_dispenser4") != "-1":
             self.bind(
                 self.configs.values.get("dispensers", "key_binding_dispenser4"),
-                self.shake_dispenser4,
+                self.shake_dispenser4,  # type: ignore
             )
 
     def exit(self) -> None:
@@ -660,211 +557,49 @@ class Control(ttk.Frame, supports_update, supports_exit):
             except Exception:
                 self.log.exception("Cannot properly stop translation_stage_device")
 
-    def shake_dispenser1(self, event=None) -> None:
-        if event is not None:
-            self.diagnostic_particles.shake_dispenser1()
+    def shake_dispenser1(self, event: None = None) -> None:
+        # if event is not None:
+        self.diagnostic_particles.shake_dispenser1()
 
-    def shake_dispenser2(self, event=None) -> None:
-        if event is not None:
-            self.diagnostic_particles.shake_dispenser2()
+    def shake_dispenser2(self, event: None = None) -> None:
+        # if event is not None:
+        self.diagnostic_particles.shake_dispenser2()
 
-    def shake_dispenser3(self, event=None) -> None:
-        if event is not None:
-            self.diagnostic_particles.shake_dispenser3()
+    def shake_dispenser3(self, event: None = None) -> None:
+        # if event is not None:
+        self.diagnostic_particles.shake_dispenser3()
 
-    def shake_dispenser4(self, event=None) -> None:
-        if event is not None:
-            self.diagnostic_particles.shake_dispenser4()
+    def shake_dispenser4(self, event: None = None) -> None:
+        # if event is not None:
+        self.diagnostic_particles.shake_dispenser4()
 
     def debugprint(self, msg: str) -> None:
         self.log.debug(f"(DEPRECATED LOG): {msg}")
 
 
-class Cameras(ttk.LabelFrame, supports_exit):
-    def __init__(self, _root: MainTab, text: str) -> None:
-        ttk.LabelFrame.__init__(self, _root, text=text)
-        supports_exit.__init__(self)
-        self.root = _root
-        self.configs = self.root.root.root.configs
-        self.log = self.root.root.root.log
-
-        self.cameras_window_control = ttk.Frame(self)
-        self.cameras_window_control.pack()
-
-        # cameras, record
-        self.cameras_connect_button = ttk.Button(
-            self.cameras_window_control,
-            text="connect",
-            command=self.connect_cameras,
-        )
-        self.cameras_connect_button.grid(column=0, row=0)
-        self.cameras_disconnect_button = ttk.Button(
-            self.cameras_window_control,
-            text="disconnect",
-            command=self.disconnect_cameras,
-        )
-        self.cameras_disconnect_button.grid(column=0, row=1)
-        self.cameras_quit_button = ttk.Button(
-            self.cameras_window_control,
-            text="quit cams",
-            command=self.quit_cameras,
-        )
-        self.cameras_quit_button.grid(column=0, row=2)
-        self.cameras_start_live_view_button = ttk.Button(
-            self.cameras_window_control,
-            text="start view",
-            command=self.start_live_view_cameras,
-        )
-        self.cameras_start_live_view_button.grid(column=0, row=3)
-        self.cameras_stop_live_view_button = ttk.Button(
-            self.cameras_window_control,
-            text="stop view",
-            command=self.stop_live_view_cameras,
-        )
-        self.cameras_stop_live_view_button.grid(column=0, row=4)
-        self.cameras_start_record_button = ttk.Button(
-            self.cameras_window_control,
-            text="start record",
-            command=self.start_record_cameras,
-        )
-        self.cameras_start_record_button.grid(column=0, row=5)
-        self.cameras_stop_record_button = ttk.Button(
-            self.cameras_window_control,
-            text="stop record",
-            command=self.stop_record_cameras,
-        )
-        self.cameras_stop_record_button.grid(column=0, row=6)
-
-        self.bind(self.configs.values.get("cameras", "key_binding_view_all"), self.grabber_view)
-        self.bind(self.configs.values.get("cameras", "key_binding_record_all"), self.grabber_record)
-
-        # camera pictures
-        self.cameras_window_view = ttk.Frame(self)
-        self.cameras_window_view.pack()
-        self.camera_picture_x = self.configs.values.getint("cameras", "width_in_main_tab")
-        self.create_camera_movie_labels(self.cameras_window_view)
-        # cameras
-        self.cameras = []
-        # for i in range(self.configs.number_of_cameras):
-        #     self.cameras += [
-        #         camera.camera(
-        #             config=self.configs,
-        #             confsect="camera%d" % (i + 1),
-        #             pw=self.camera_tabs[i],
-        #             screenx=self.screenx,
-        #             screeny=self.screeny,
-        #             extern_img=self.cameras_imgs[i],
-        #             extern_x=self.camera_picture_x,
-        #             notebook=self.tabs,
-        #             notebookindex=self.camera_notebook_index[i],
-        #             notebookextern=0,
-        #         )
-        #     ]
-
-    def exit(self) -> None:
-        try:
-            self.stop_live_view_cameras()
-        except Exception:
-            self.log.exception("Error in stopping live cameras")
-        if self.configs.values.getboolean("cameras", "stop_camera_servers_on_exit"):
-            self.quit_cameras()
-        else:
-            self.disconnect_cameras()
-
-    def connect_cameras(self) -> None:
-        for i in range(self.configs.number_of_cameras):
-            self.cameras[i].open_connection_command()
-            time.sleep(0.1)
-
-    def disconnect_cameras(self) -> None:
-        for i in range(self.configs.number_of_cameras):
-            try:
-                self.cameras[i].close_connection_command()
-                time.sleep(0.05)
-            except Exception:
-                pass
-
-    def quit_cameras(self) -> None:
-        for i in range(self.configs.number_of_cameras):
-            try:
-                self.cameras[i].quit_server_command()
-                time.sleep(0.05)
-            except Exception:
-                pass
-        time.sleep(0.1)
-
-    def start_live_view_cameras(self) -> None:
-        for i in range(self.configs.number_of_cameras):
-            t = threading.Thread(target=self.cameras[i].start_live_view)
-            t.daemon = True
-            t.start()
-
-    def stop_live_view_cameras(self) -> None:
-        for i in range(self.configs.number_of_cameras):
-            self.cameras[i].stop_live_view()
-
-    def start_record_cameras(self) -> None:
-        for i in range(self.configs.number_of_cameras):
-            self.cameras[i].start_recording()
-
-    def stop_record_cameras(self) -> None:
-        for i in range(self.configs.number_of_cameras):
-            self.cameras[i].stop_recording()
-
-    def create_camera_movie_labels(self, pw) -> None:
-        self.cameras_imgs = []
-        self.cameras_movie_labels = []
-        for i in range(self.configs.number_of_cameras):
-            self.cameras_imgs += [PIL.ImageTk.PhotoImage("L", (self.camera_picture_x, self.camera_picture_x))]
-            self.cameras_movie_labels += [tk.Label(pw, image=self.cameras_imgs[i])]
-            self.cameras_movie_labels[i].pack()
-
-    def grabber_record(self, event=None) -> None:
-        # if event is not None:
-        #     self.cameras_start_record_button.flash()
-        #     self.cameras_start_live_view_button.flash()
-        self.start_record_cameras()
-        self.start_live_view_cameras()
-        additionally_command_for_record_all = self.configs.values.get("cameras", "additionally_command_for_record_all")
-        if additionally_command_for_record_all != "-1":
-            self.log.debug(f"additionally command in background: {additionally_command_for_record_all}")
-            os.system(f"{additionally_command_for_record_all} &")
-
-    def grabber_view(self, event=None) -> None:
-        # if event is not None:
-        #     self.cameras_stop_record_button.flash()
-        #     self.cameras_start_live_view_button.flash()
-        self.stop_record_cameras()
-        self.start_live_view_cameras()
-        additionally_command_for_view_all = self.configs.values.get("cameras", "additionally_command_for_view_all")
-        if additionally_command_for_view_all != "-1":
-            self.log.debug(f"Additionally command in background: {additionally_command_for_view_all}")
-            os.system(f"{additionally_command_for_view_all} &")
-
-
-class Toolbar(ttk.Frame):
-    def __init__(self, _root: PLC) -> None:
-        super().__init__(_root)
-        self.root = _root
+class Toolbar(ttk.Frame, Master):
+    def __init__(self, _root: tk.Misc, master: Master) -> None:
+        ttk.Frame.__init__(self, _root)
+        Master.__init__(self, master)
 
         self.info_area_load_val = tk.StringVar()
         self.info_area_load = ttk.Label(self, textvariable=self.info_area_load_val, width=21, anchor="sw")
         self.info_area_load_val.set("")
         self.info_area_load.pack(side=tk.RIGHT)
 
-        self.setpoints_area = Spoints(self)
+        self.setpoints_area = Spoints(self, self)
         self.setpoints_area.pack(side=tk.LEFT)
 
     def set_info_load(self, info: str) -> None:
         self.info_area_load_val.set(info)
 
 
-class Spoints(ttk.Frame):
-    def __init__(self, _root: Toolbar) -> None:
-        super().__init__(_root, relief="solid", borderwidth=1)
-        self.root = _root
-        self.configs = self.root.root.configs
+class Spoints(ttk.Frame, Master):
+    def __init__(self, _root: ttk.Frame, master: Master) -> None:
+        ttk.Frame.__init__(self, _root, relief="solid", borderwidth=1)
+        Master.__init__(self, master)
 
+        self.setpoints_choose: int = 0
         self.setpoint_val = tk.StringVar()
         self.setpoint_label = tk.Label(self, textvariable=self.setpoint_val, height=1, width=80)
         self.setpoint_label.grid(column=1, row=0)
@@ -886,7 +621,7 @@ class Spoints(ttk.Frame):
         self.btn_set = ttk.Button(
             self,
             text="set",
-            command=self.root.root.set_setpoints,
+            command=self.set_setpoints,  # type: ignore
             state=tk.DISABLED,
         )
         self.btn_set.grid(column=3, row=0)
@@ -894,22 +629,40 @@ class Spoints(ttk.Frame):
         if self.configs.values.get("ini", "key_binding_setpoints_previous") != "-1":
             self.bind(
                 self.configs.values.get("ini", "key_binding_setpoints_previous"),
-                self.choose_previous_setpoint,
+                self.choose_previous_setpoint,  # type: ignore
             )
         if self.configs.values.get("ini", "key_binding_setpoints_next") != "-1":
             self.bind(
                 self.configs.values.get("ini", "key_binding_setpoints_next"),
-                self.choose_next_setpoint,
+                self.choose_next_setpoint,  # type: ignore
             )
 
-    def choose_previous_setpoint(self, event=None) -> None:
-        # self.btn_previous.flash()
-        s = self.root.root.choose_previous_setpoint()
+        self.default_setpoints_file = self.configs.values.get("ini", "default_setpoints_file")
+        if self.default_setpoints_file != "-1":
+            self.log.debug("Default setpoint file available")
+            self.read_setpoints()
+        else:
+            self.log.debug("No default setpoints file available")
+
+        if self.configs.values.get("ini", "key_binding_setpoints_set") != "-1":
+            self.bind(self.configs.values.get("ini", "key_binding_setpoints_set"), self.set_setpoints)  # type: ignore
+
+    def choose_previous_setpoint(self, event: None = None) -> None:
+        i = self.setpoints_choose
+        i = max(0, i - 1)
+        if i != self.setpoints_choose:
+            s = self.__choose_setpoint(i=i)
+        else:
+            s = "None"
         self.setpoint_val.set(s)
 
-    def choose_next_setpoint(self, event=None) -> None:
-        # self.btn_next.flash()
-        s = self.root.root.choose_next_setpoint()
+    def choose_next_setpoint(self, event: None = None) -> None:
+        i = self.setpoints_choose
+        i = min((len(self.setpoints.sections()) - 1, i + 1))
+        if i != self.setpoints_choose:
+            s = self.__choose_setpoint(i=i)
+        else:
+            s = "None"
         self.setpoint_val.set(s)
 
     def unlock(self) -> None:
@@ -917,18 +670,56 @@ class Spoints(ttk.Frame):
         self.btn_previous.configure(state=tk.NORMAL)
         self.btn_set.configure(state=tk.NORMAL)
 
+    def __choose_setpoint(self, i: int = 0) -> str:
+        self.setpoints_choose = i
+        s = self.setpoints.sections()[i]
+        self.log.debug("choose setpoints %d: %s" % (i, s))
+        if self.setpoints.has_option(s, "load_set") and self.setpoints.getboolean(s, "load_set"):
+            self.set_setpoints()
+            return s
+        return "None"
 
-class Menu(tk.Menu):
+    def read_setpoints(self) -> None:
+        self.log.debug("Asking for file to read setpoints from")
+        f = tkinter.filedialog.askopenfilename(
+            defaultextension=".cfg", initialdir="~", title="read setpoints from file"
+        )
+        self.default_setpoints_file = f
+        if len(f) > 0:
+            self.log.debug("read setpoints from file '%s'" % self.default_setpoints_file)
+            self.setpoints = configparser.ConfigParser()
+            try:
+                self.setpoints.read(os.path.expanduser(self.default_setpoints_file))
+            except Exception:
+                self.log.exception("Error in reading setpoints file")
+            if len(self.setpoints.sections()) > 0:
+                self.log.debug("found %d sections" % len(self.setpoints.sections()))
+                self.__choose_setpoint(i=0)
+                self.load_setpoints()
+                self.unlock()
+
+    def load_setpoints(self) -> None:
+        i = self.setpoints_choose
+        s = self.setpoints.sections()[i]
+        self.log.debug("load setpoints %d: %s" % (i, s))
+        if self.setpoints.has_option(s, "load_set") and self.setpoints.getboolean(s, "load_set"):
+            self.set_setpoints()
+
+    def set_setpoints(self, event: None = None) -> None:
+        pass
+
+
+class Menu(tk.Menu, Master):
     """plc menu"""
 
-    def __init__(self, _root: PLC) -> None:
-        super().__init__(_root)
+    def __init__(self, _root: PLC, master: Master) -> None:
+        tk.Menu.__init__(self, _root)
+        Master.__init__(self, master)
         self.root = _root
-
         # file menu
         self.files = tk.Menu(self)
         self.add_cascade(label="File", menu=self.files)
-        self.files.add_command(label="Read setpoints", command=self.root.read_setpoints)
+        self.files.add_command(label="Read setpoints", command=self.root.toolbar.setpoints_area.read_setpoints)
         self.files.add_command(label="Save default config", command=self.root.save_default_config)
         self.files.add_command(label="Exit", command=self.root.exit_button)
 
@@ -958,7 +749,7 @@ class Menu(tk.Menu):
             command=self.switch_debug_infos_on_off,
             variable=self.debugmenu_status,
         )
-        self.debugmenu_status.set(1 if self.debug == 1 else 0)
+        self.debugmenu_status.set(1)
 
         # help menu
         self.help = tk.Menu(self)

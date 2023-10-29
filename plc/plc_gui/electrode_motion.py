@@ -31,7 +31,7 @@ from typing import Callable
 
 from ..plc_tools.conversion import b2onoff
 from .electrode_motion_controller import electrode_motion_controller
-from .utils import supports_exit
+from .utils import Master
 
 
 class sample_frame(ttk.LabelFrame):
@@ -86,7 +86,7 @@ class sample_frame(ttk.LabelFrame):
         self.move(steps)
 
 
-class electrode_motion(ttk.LabelFrame, supports_exit):
+class electrode_motion(ttk.LabelFrame, Master):
     """
     gui for Electrode Motion
     """
@@ -94,7 +94,7 @@ class electrode_motion(ttk.LabelFrame, supports_exit):
     def __init__(
         self,
         _root: ttk.Frame,
-        _log: logging.Logger,
+        master: Master,
         controller: electrode_motion_controller,
     ) -> None:
         """__init__(self,config=None,pw=None,debugprint=None,controller=None)
@@ -108,8 +108,7 @@ class electrode_motion(ttk.LabelFrame, supports_exit):
                         function to call for print debug information
         """
         ttk.LabelFrame.__init__(self, _root, text="Electrode motion")
-        supports_exit.__init__(self)
-        self.log = _log
+        Master.__init__(self, master, custom_name="EMC")
         self.controller = controller
 
         self.init_frame = tkinter.Frame(self)

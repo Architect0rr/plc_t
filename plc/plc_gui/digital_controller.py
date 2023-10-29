@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2013 Daniel Mohr
+# Copyright (C) 2012-2013 Daniel Mohr
 #
 # Copyright (C) 2023 Egor Perevoshchikov
 #
@@ -66,9 +66,6 @@ class digital_controller(socket_communication_class, controller):
         set setpoint[...] to 0 or False
         if connected to real device, get actualvalue[...] from it
         otherwise set actualvalue[...] to  0 or False
-
-        Author: Daniel Mohr
-        Date: 2012-11-27
         """
         self.datalock.acquire()
         for port in self.ports:

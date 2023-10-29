@@ -40,7 +40,8 @@ import tempfile
 import threading
 import socketserver
 from pathlib import Path
-from typing import NoReturn, Dict, Any, Tuple
+from types import FrameType
+from typing import NoReturn, Dict, Any, Tuple, List
 
 from ..plc_tools import server_base
 from ..plc_tools.conversion import volt2dac, adcstring2volt
@@ -48,7 +49,7 @@ from ..plc_tools.plclogclasses import QueuedWatchedFileHandler
 from ..plc_tools.plc_socket_communication import socket_communication
 
 
-def get_s(actualvalue):
+def get_s(actualvalue: Dict[str, Any]) -> str:
     s = ""
     st = list("0000")
     if actualvalue["DO"][3]:
@@ -87,8 +88,14 @@ class controller_class(server_base.controller_class):
     set before.
     """
 
-    def myinit(self, DO: str, R: str, U05: str, U15: str, U24: str, DAC: str, simulate: bool = False) -> None:
-        self.simulate: bool = simulate
+    def myinit(self, spec_args: List[Any]) -> None:
+        DO: str
+        R: str
+        U05: str
+        U15: str
+        U24: str
+        DAC: str
+        DO, R, U05, U15, U24, DAC = spec_args  # type: ignore
         self.actualvaluelock.acquire()  # lock for running
         self.actualvalue: Dict[str, Any] = {
             "DO": 4 * [None],
@@ -110,20 +117,20 @@ class controller_class(server_base.controller_class):
             "U24": False,
             "DAC": 4 * [0.00015259021896696368],
         }
-        if DO is not None:
-            self.setpoint["DO"] = self.str2boolarray(DO)
-        if R is not None:
-            self.setpoint["R"] = self.str2boolarray(R)
-        if U05 is not None:
-            self.setpoint["U05"] = self.str2bool(U05)
-        if U15 is not None:
-            self.setpoint["U15"] = self.str2bool(U15)
-        if U24 is not None:
-            self.setpoint["U24"] = self.str2bool(U24)
-        if DAC is not None:
-            self.setpoint["DAC"] = self.str2float(DAC)
-            for i in range(4):
-                self.setpoint["DAC"][i] = min(max(-10.0, self.setpoint["DAC"][i]), +10.0)
+        # if DO is not None:
+        self.setpoint["DO"] = self.str2boolarray(DO)
+        # if R is not None:
+        self.setpoint["R"] = self.str2boolarray(R)
+        # if U05 is not None:
+        self.setpoint["U05"] = self.str2bool(U05)
+        # if U15 is not None:
+        self.setpoint["U15"] = self.str2bool(U15)
+        # if U24 is not None:
+        self.setpoint["U24"] = self.str2bool(U24)
+        # if DAC is not None:
+        self.setpoint["DAC"] = self.str2float(DAC)
+        for i in range(4):
+            self.setpoint["DAC"][i] = min(max(-10.0, self.setpoint["DAC"][i]), +10.0)
         self.setpointlock.release()  # release the lock
 
     def __write(self, _data: str) -> int:
@@ -136,9 +143,9 @@ class controller_class(server_base.controller_class):
 
     def set_actualvalue_to_the_device(self) -> None:
         if not self.simulate:
-            if self.device is None or self.devicename == "":
-                self.log.error("No device")
-                raise RuntimeError("No device")
+            # if self.device is None or self.devicename == "":
+            self.log.error("No device")
+            raise RuntimeError("No device")
         # will set the actualvalue to the device
         self.set_actualvalue_to_the_device_lock.acquire()  # lock to write data
         # write actualvalue to the device
@@ -225,7 +232,7 @@ class controller_class(server_base.controller_class):
         #         sendreceive += "**"
         else:
             r = self.__read(32)  # ADC
-            self.log.info(f"Readed: {r}")
+            # self.log.info(f"Readed: {r}")
             sendreceive += r
             for i in range(8):
                 actualvalue["ADC"][i] = adcstring2volt(r[i * 4 + 0 : i * 4 + 4])
@@ -254,13 +261,13 @@ class controller_class(server_base.controller_class):
             self.datalog.debug(f"{t} SENDRECEIVE: {sendreceive}")
         self.set_actualvalue_to_the_device_lock.release()  # release the lock
 
-    def set_setpoint(self, s=None) -> None:
-        if s is not None:
-            for i in range(4):
-                s["DAC"][i] = min(max(-10.0, s["DAC"][i]), +10.0)
-            self.setpointlock.acquire()  # lock to set
-            self.setpoint = s.copy()
-            self.setpointlock.release()  # release the lock
+    def set_setpoint(self, s: Dict[str, Any]) -> None:
+        # if s is not None:
+        for i in range(4):
+            s["DAC"][i] = min(max(-10.0, s["DAC"][i]), +10.0)
+        self.setpointlock.acquire()  # lock to set
+        self.setpoint = s.copy()
+        self.setpointlock.release()  # release the lock
 
 
 controller: controller_class
@@ -715,13 +722,8 @@ def main() -> NoReturn:
         log,
         datalog,
         args.device,
+        [args.DO, args.R, args.U05, args.U15, args.U24, args.DAC],
         args.timedelay,
-        args.DO,
-        args.R,
-        args.U05,
-        args.U15,
-        args.U24,
-        args.DAC,
         args.simulate,
     )
     try:
@@ -730,10 +732,17 @@ def main() -> NoReturn:
         log.exception(f"Probably port {args.port} is in use already")
         raise
 
-    ip, port = server.server_address
-    log.info("listen at %s:%d" % (ip, port))
+    ip_raw: str | bytes | bytearray
+    ip_raw, port = server.server_address
+    if not isinstance(ip_raw, str):
+        ip_b = bytes(ip_raw)
+        ip = ip_b.decode("utf-8")
+    else:
+        ip = ip_raw
 
-    def shutdown(signum, frame) -> None:
+    log.info(f"Listen at {ip}:{port}")
+
+    def shutdown(signum: int, frame: FrameType | None) -> None:
         global controller
         controller.log.info("got signal %d" % signum)
         controller.log.debug("number of threads: %d" % threading.activeCount())

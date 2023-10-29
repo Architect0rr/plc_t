@@ -26,7 +26,6 @@ __digital_controller_server_version__ = __digital_controller_server_date__
 
 import os
 import re
-from socketserver import BaseServer
 import sys
 import csv
 import time
@@ -36,19 +35,21 @@ import signal
 import socket
 import pickle
 import struct
+import logging
 import tempfile
 import argparse
 import threading
-import socketserver
-import logging
-import logging.handlers
 from pathlib import Path
+import logging.handlers
+import socketserver
+from socketserver import BaseServer
+from types import FrameType
 from typing import Dict, Any, List, Tuple, NoReturn
 
-from plc.plc_tools import server_base
+from ..plc_tools import server_base
+from ..plc_tools.plclogclasses import QueuedWatchedFileHandler
 
 # from plc.plc_tools.plc_socket_communication import socket_communication
-from plc.plc_tools.plclogclasses import QueuedWatchedFileHandler
 
 
 class controller_class(server_base.controller_class):
@@ -61,28 +62,22 @@ class controller_class(server_base.controller_class):
     set before.
     """
 
-    def myinit(self, A: str, B: str, C: str, D: str, simulate: bool = False) -> None:
-        self.simulate = simulate
+    def myinit(self, spec_args: List[Any]) -> None:
+        # A: str, B: str, C: str, D: str, simulate: bool = False
+        A: str
+        B: str
+        C: str
+        D: str
+        A, B, C, D = spec_args  # type: ignore
         self.shake_dispenser_lock = threading.Lock()
         self.write_to_device_lock = threading.Lock()
+
         self.actualvaluelock.acquire()  # lock for running
         self.actualvalue: Dict[str, Any] = {}
-        if A is not None:
-            self.actualvalue["A"] = self.str2boolarray(A)
-        else:
-            self.actualvalue["A"] = 8 * [False]
-        if B is not None:
-            self.actualvalue["B"] = self.str2boolarray(B)
-        else:
-            self.actualvalue["B"] = 8 * [False]
-        if C is not None:
-            self.actualvalue["C"] = self.str2boolarray(C)
-        else:
-            self.actualvalue["C"] = 8 * [False]
-        if D is not None:
-            self.actualvalue["D"] = self.str2boolarray(D)
-        else:
-            self.actualvalue["D"] = 8 * [False]
+        self.actualvalue["A"] = self.str2boolarray(A)
+        self.actualvalue["B"] = self.str2boolarray(B)
+        self.actualvalue["C"] = self.str2boolarray(C)
+        self.actualvalue["D"] = self.str2boolarray(D)
         self.actualvalue["dispenser"] = {
             "n": None,
             "ton": None,
@@ -110,7 +105,7 @@ class controller_class(server_base.controller_class):
         self.actualvaluelock.acquire()  # lock to get new settings
         actualvalue = self.actualvalue.copy()
         self.actualvaluelock.release()  # release the lock
-        s = []
+        s: List[str] = []
         self.setpointlock.acquire()  # lock to get new settings
         for i in ["A", "B", "C", "D"]:
             if actualvalue[i] != self.setpoint[i]:
@@ -169,7 +164,7 @@ class controller_class(server_base.controller_class):
             self.setpoint["dispenser"]["shake"] = False
             self.actualvalue["dispenser"]["shake"] = True
             # t0 = time.time()
-            for i in range(self.actualvalue["dispenser"]["n"]):
+            for _ in range(self.actualvalue["dispenser"]["n"]):
                 t1 = time.time()
                 self.actualvalue[self.actualvalue["dispenser"]["port"]][
                     self.actualvalue["dispenser"]["channel"]
@@ -223,15 +218,16 @@ class controller_class(server_base.controller_class):
         rt = self.device.write(data_by)
         return rt if rt is not None else 0
 
+    def __read(self, size: int) -> bytes:
+        data = self.device.read(size)
+        return data
+
     def write_to_device(self, s: List[str]) -> None:
         if len(s) == 0:
             return
-        if self.device is None or self.devicename == "":
-            if self.simulate:
-                self.log.warning("no device given; can't write to device; will simulate some delay!")
-                time.sleep(random.randint(240, 1000) / 10000.0)
-            else:
-                self.log.warning("no device given; can't write to device!")
+        if self.simulate:
+            self.log.warning("no device given; can't write to device; will simulate some delay!")
+            time.sleep(random.randint(240, 1000) / 10000.0)
             self.log.debug("out: %s" % "".join(s))
             return
         self.write_to_device_lock.acquire()  # lock
@@ -242,33 +238,33 @@ class controller_class(server_base.controller_class):
             self.device.open()
             self.deviceopen = True
         for i in range(len(s)):
+            self.device.reset_input_buffer()
             self.__write(s[i])
             self.device.flush()
-            r = self.device.read(2)
+            r = self.__read(2)
             t = time.time()
-            if r != "Qy":
+            if r != b"Qy":
                 self.log.warning("communication problem with device %s" % self.devicename)
                 self.communication_problem += 1
                 if self.communication_problem >= 3:
                     self.log.warning("%d communication problems; will restart the device" % self.communication_problem)
-                    # self.device.flushInput()
-                    # self.device.flushOutput()
                     self.device.flush()
+                    self.device.reset_input_buffer()
+                    self.device.reset_output_buffer()
                     self.device.close()
                     self.device.open()
                     self.communication_problem = -1
             else:
-                self.datalog.debug("%f SENDRECEIVE: %s%s" % (t, s[i], r))
+                self.datalog.debug(f"{t} SENDRECEIVE: {s[i]}{r!r}")
         self.write_to_device_lock.release()  # release the lock
 
-    def set_setpoint_human_readable(self, port: str, channel: str | int, v=False) -> None:
-        if (port is not None) and (channel is not None):
-            self.log.debug("set port %s channel %s to %s" % (port, channel, v))
-            self.setpointlock.acquire()  # lock to set
-            self.setpoint[port][channel] = v
-            self.setpointlock.release()  # release the lock
+    def set_setpoint_human_readable(self, port: str, channel: str | int, v: bool = False) -> None:
+        self.log.debug("set port %s channel %s to %s" % (port, channel, v))
+        self.setpointlock.acquire()  # lock to set
+        self.setpoint[port][channel] = v
+        self.setpointlock.release()  # release the lock
 
-    def set_setpoint_int(self, _v: str):
+    def set_setpoint_int(self, _v: str) -> None:
         v = _v.encode("utf-8")
         self.setpointlock.acquire()  # lock to set
         self.setpoint["A"] = self.int2boolarray(struct.unpack("B", v[0:1])[0])
@@ -278,175 +274,179 @@ class controller_class(server_base.controller_class):
         self.setpointlock.release()  # release the lock
 
 
-controller: controller_class
+# controller: controller_class
 
 
-class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
-    def __init__(self, request, client_address, server: BaseServer) -> None:
-        super().__init__(request, client_address, server)
+def GTTRH(controller: controller_class):
+    class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
+        def __init__(self, request: socket.socket, client_address: Any, server: BaseServer) -> None:
+            super().__init__(request, client_address, server)
 
-    def handle(self) -> None:
-        global controller
-        self.send_data_to_socket_lock = threading.Lock()
-        bufsize = 4096  # read/receive Bytes at once
-        controller.log.debug(f"Starting connection to {self.client_address[0],}:{self.client_address[1]}")
-        data = b""
-        self.request: socket.socket
-        while controller.running:
-            self.request.settimeout(1)
-            # get some data
-            d = b""
+        def handle(self) -> None:
+            # global controller
+            self.send_data_to_socket_lock = threading.Lock()
+            bufsize = 4096  # read/receive Bytes at once
+            controller.log.debug(f"Starting connection to {self.client_address[0],}:{self.client_address[1]}")
+            data: bytes = b""
+            self.request: socket.socket
+            while controller.running:
+                self.request.settimeout(1)
+                # get some data
+                d = b""
+                try:
+                    d = self.request.recv(bufsize)
+                    if not d:
+                        break
+                except Exception:
+                    controller.log.exception("Error in receiving data from plc")
+                # analyse data
+                # response: bytearray = bytearray()
+                if len(d) > 0:
+                    data += d
+                    found_something = True
+                else:
+                    found_something = False
+                while found_something:
+                    found_something = False
+                    if (len(data) >= 2) and (data[0:1].lower() == b"p"):
+                        # packed data; all settings at once
+                        found_something = True
+                        [data, v] = self.receive_data_from_socket2(self.request, bufsize, data[2:])
+                        controller.set_setpoint(s=v)
+                    elif (len(data) >= 4) and (data[0:4].lower() == b"!w2d"):
+                        # trigger writing setvalues to the external device
+                        found_something = True
+                        controller.set_actualvalue_to_the_device()
+                        data = data[4:]
+                    elif (len(data) >= 6) and (data[0:6].lower() == b"getact"):
+                        # sends the actual values back
+                        found_something = True
+                        data = data[6:]
+                        self.send_data_to_socket(self.request, self.create_send_format(controller.get_actualvalue()))
+                    elif (len(data) >= 5) and (data[0:1].lower() == b"s"):
+                        found_something = True
+                        controller.set_setpoint_int(data[1:5].decode("utf-8"))
+                        data = data[5:]
+                    elif (len(data) >= 9) and (data[0:1].lower() == b"a"):
+                        # A00000000
+                        found_something = True
+                        for i in range(8):
+                            if data[i + 1 : i + 2] == b"1":
+                                controller.set_setpoint_human_readable(port="A", channel=i, v=True)
+                            else:
+                                controller.set_setpoint_human_readable(port="A", channel=i, v=False)
+                        data = data[9:]
+                    elif (len(data) >= 9) and (data[0:1].lower() == b"b"):
+                        # B00000000
+                        found_something = True
+                        for i in range(8):
+                            if data[i + 1 : i + 2] == b"1":
+                                controller.set_setpoint_human_readable("B", i, True)
+                            else:
+                                controller.set_setpoint_human_readable("B", i, False)
+                        data = data[9:]
+                    elif (len(data) >= 9) and (data[0:1].lower() == b"c"):
+                        # C00000000
+                        found_something = True
+                        for i in range(8):
+                            if data[i + 1 : i + 2] == b"1":
+                                controller.set_setpoint_human_readable("C", i, True)
+                            else:
+                                controller.set_setpoint_human_readable("C", i, False)
+                        data = data[9:]
+                    elif (len(data) >= 9) and (data[0:1].lower() == b"d"):
+                        # D00000000
+                        found_something = True
+                        for i in range(8):
+                            if data[i + 1 : i + 2] == b"1":
+                                controller.set_setpoint_human_readable("D", i, True)
+                            else:
+                                controller.set_setpoint_human_readable("D", i, False)
+                        data = data[9:]
+                    elif (len(data) >= 20) and (data[0:10].lower() == b"_dispenser"):
+                        found_something = True
+                        # _dispenser00111222
+                        controller.set_setpoint_human_readable("dispenser", "shake", False)
+                        controller.set_setpoint_human_readable("dispenser", "port", bool(data[10]))
+                        controller.set_setpoint_human_readable("dispenser", "channel", bool(int(data[11])))
+                        controller.set_setpoint_human_readable("dispenser", "n", bool(int(data[12:14])))
+                        controller.set_setpoint_human_readable("dispenser", "ton", bool(int(data[14:17]) / 1000))
+                        controller.set_setpoint_human_readable("dispenser", "toff", bool(int(data[17:20]) / 1000))
+                        data = data[20:]
+                    elif (len(data) >= 10) and (data[0:10].lower() == b"!dispenser"):
+                        # !dispenser
+                        # do the shake
+                        found_something = True
+                        if (
+                            controller.actualvalue["dispenser"]["n"] is not None
+                            and controller.actualvalue["dispenser"]["ton"] is not None
+                            and controller.actualvalue["dispenser"]["port"] is not None
+                            and controller.actualvalue["dispenser"]["channel"] is not None
+                            and controller.actualvalue["dispenser"]["toff"] is not None
+                        ):
+                            controller.set_setpoint_human_readable("dispenser", "shake", True)
+                        data = data[10:]
+                    elif (len(data) >= 12) and (data[0:9].lower() == b"timedelay"):
+                        found_something = True
+                        v = int(data[9:12])
+                        controller.log.debug("set timedelay/updatedelay to %d milliseconds" % v)
+                        controller.updatedelay = v / 1000.0
+                        data = data[12:]
+                    elif (len(data) >= 4) and (data[0:4].lower() == b"quit"):
+                        found_something = True
+                        self.send_data_to_socket(self.request, b"quitting")
+                        controller.log.info("Quitting")
+                        data = data[4:]
+                        controller.running = False
+                        self.server.shutdown()
+                    elif (len(data) >= 7) and (data[0:7].lower() == b"version"):
+                        found_something = True
+                        a = f"digital_controller_server Version: {__digital_controller_server_version__}"
+                        self.send_data_to_socket(self.request, a.encode("utf-8"))
+                        controller.log.debug(a)
+                        data = data[7:]
+                    if len(data) == 0:
+                        break
+                # time.sleep(random.randint(1, 100) / 1000.0)
+                # if len(response) > 0:
+                #     self.send_data_to_socket(self.request, response)
+
+        def send_data_to_socket(self, s: socket.socket, msg: bytes) -> None:
+            totalsent = 0
+            msglen = len(msg)
+            while totalsent < msglen:
+                sent = s.send(msg[totalsent:])
+                if sent == 0:
+                    raise RuntimeError("socket connection broken")
+                totalsent = totalsent + sent
+
+        def receive_data_from_socket2(
+            self, s: socket.socket, bufsize: int = 4096, data: bytes = b""
+        ) -> Tuple[bytes, Any]:
+            expected_length = 4
+            while len(data) < expected_length:
+                data += s.recv(bufsize)
+            expected_length += struct.unpack("!i", (data[0:4]))[0]
+            while len(data) < expected_length:
+                data += s.recv(bufsize)
+            v = pickle.loads((data[4:expected_length]))
+            data = data[expected_length:]
+            return (data, v)
+
+        def create_send_format(self, data: Any) -> bytes:
+            s: bytes = pickle.dumps(data, -1)
+            asd = bytearray(struct.pack(b"!i", len(s)))
+            asd.extend(s)
+            return bytes(asd)
+
+        def finish(self) -> None:
+            controller.log.debug("stop connection to %s:%s" % (self.client_address[0], self.client_address[1]))
             try:
-                d = self.request.recv(bufsize)
-                if not d:
-                    break
+                self.request.shutdown(socket.SHUT_RDWR)
             except Exception:
-                controller.log.exception("Error in receiving data from plc")
-            # analyse data
-            # response: bytearray = bytearray()
-            if len(d) > 0:
-                data += d
-                found_something = True
-            else:
-                found_something = False
-            while found_something:
-                found_something = False
-                if (len(data) >= 2) and (data[0:1].lower() == b"p"):
-                    # packed data; all settings at once
-                    found_something = True
-                    [data, v] = self.receive_data_from_socket2(self.request, bufsize, data[2:])
-                    controller.set_setpoint(s=v)
-                elif (len(data) >= 4) and (data[0:4].lower() == b"!w2d"):
-                    # trigger writing setvalues to the external device
-                    found_something = True
-                    controller.set_actualvalue_to_the_device()
-                    data = data[4:]
-                elif (len(data) >= 6) and (data[0:6].lower() == b"getact"):
-                    # sends the actual values back
-                    found_something = True
-                    data = data[6:]
-                    self.send_data_to_socket(self.request, self.create_send_format(controller.get_actualvalue()))
-                elif (len(data) >= 5) and (data[0:1].lower() == b"s"):
-                    found_something = True
-                    controller.set_setpoint_int(data[1:5].decode("utf-8"))
-                    data = data[5:]
-                elif (len(data) >= 9) and (data[0:1].lower() == b"a"):
-                    # A00000000
-                    found_something = True
-                    for i in range(8):
-                        if data[1 + i] == "1":
-                            controller.set_setpoint_human_readable(port="A", channel=i, v=True)
-                        else:
-                            controller.set_setpoint_human_readable(port="A", channel=i, v=False)
-                    data = data[9:]
-                elif (len(data) >= 9) and (data[0:1].lower() == b"b"):
-                    # B00000000
-                    found_something = True
-                    for i in range(8):
-                        if data[1 + i] == "1":
-                            controller.set_setpoint_human_readable("B", i, True)
-                        else:
-                            controller.set_setpoint_human_readable("B", i, False)
-                    data = data[9:]
-                elif (len(data) >= 9) and (data[0:1].lower() == b"c"):
-                    # C00000000
-                    found_something = True
-                    for i in range(8):
-                        if data[1 + i] == "1":
-                            controller.set_setpoint_human_readable("C", i, True)
-                        else:
-                            controller.set_setpoint_human_readable("C", i, False)
-                    data = data[9:]
-                elif (len(data) >= 9) and (data[0:1].lower() == b"d"):
-                    # D00000000
-                    found_something = True
-                    for i in range(8):
-                        if data[1 + i] == "1":
-                            controller.set_setpoint_human_readable("D", i, True)
-                        else:
-                            controller.set_setpoint_human_readable("D", i, False)
-                    data = data[9:]
-                elif (len(data) >= 20) and (data[0:10].lower() == b"_dispenser"):
-                    found_something = True
-                    # _dispenser00111222
-                    controller.set_setpoint_human_readable("dispenser", "shake", False)
-                    controller.set_setpoint_human_readable("dispenser", "port", bool(data[10]))
-                    controller.set_setpoint_human_readable("dispenser", "channel", bool(int(data[11])))
-                    controller.set_setpoint_human_readable("dispenser", "n", bool(int(data[12:14])))
-                    controller.set_setpoint_human_readable("dispenser", "ton", bool(int(data[14:17]) / 1000))
-                    controller.set_setpoint_human_readable("dispenser", "toff", bool(int(data[17:20]) / 1000))
-                    data = data[20:]
-                elif (len(data) >= 10) and (data[0:10].lower() == b"!dispenser"):
-                    # !dispenser
-                    # do the shake
-                    found_something = True
-                    if (
-                        controller.actualvalue["dispenser"]["n"] is not None
-                        and controller.actualvalue["dispenser"]["ton"] is not None
-                        and controller.actualvalue["dispenser"]["port"] is not None
-                        and controller.actualvalue["dispenser"]["channel"] is not None
-                        and controller.actualvalue["dispenser"]["toff"] is not None
-                    ):
-                        controller.set_setpoint_human_readable("dispenser", "shake", True)
-                    data = data[10:]
-                elif (len(data) >= 12) and (data[0:9].lower() == b"timedelay"):
-                    found_something = True
-                    v = int(data[9:12])
-                    controller.log.debug("set timedelay/updatedelay to %d milliseconds" % v)
-                    controller.updatedelay = v / 1000.0
-                    data = data[12:]
-                elif (len(data) >= 4) and (data[0:4].lower() == b"quit"):
-                    found_something = True
-                    self.send_data_to_socket(self.request, b"quitting")
-                    controller.log.info("Quitting")
-                    data = data[4:]
-                    controller.running = False
-                    self.server.shutdown()
-                elif (len(data) >= 7) and (data[0:7].lower() == b"version"):
-                    found_something = True
-                    a = f"digital_controller_server Version: {__digital_controller_server_version__}"
-                    self.send_data_to_socket(self.request, a.encode("utf-8"))
-                    controller.log.debug(a)
-                    data = data[7:]
-                if len(data) == 0:
-                    break
-            # time.sleep(random.randint(1, 100) / 1000.0)
-            # if len(response) > 0:
-            #     self.send_data_to_socket(self.request, response)
+                controller.log.exception("Bad socket close")
 
-    def send_data_to_socket(self, s: socket.socket, msg: bytes) -> None:
-        totalsent = 0
-        msglen = len(msg)
-        while totalsent < msglen:
-            sent = s.send(msg[totalsent:])
-            if sent == 0:
-                raise RuntimeError("socket connection broken")
-            totalsent = totalsent + sent
-
-    def receive_data_from_socket2(self, s: socket.socket, bufsize: int = 4096, data: bytes = b"") -> Tuple[bytes, Any]:
-        expected_length = 4
-        while len(data) < expected_length:
-            data += s.recv(bufsize)
-        expected_length += struct.unpack("!i", (data[0:4]))[0]
-        while len(data) < expected_length:
-            data += s.recv(bufsize)
-        v = pickle.loads((data[4:expected_length]))
-        data = data[expected_length:]
-        return (data, v)
-
-    def create_send_format(self, data: Any) -> bytes:
-        s: bytes = pickle.dumps(data, -1)
-        asd = bytearray(struct.pack(b"!i", len(s)))
-        asd.extend(s)
-        return bytes(asd)
-
-    def finish(self):
-        global controller
-        controller.log.debug("stop connection to %s:%s" % (self.client_address[0], self.client_address[1]))
-        try:
-            self.request.shutdown(socket.SHUT_RDWR)
-        except Exception:
-            controller.log.exception("Bad socket close")
+    return ThreadedTCPRequestHandler
 
 
 class ThreadedTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
@@ -454,7 +454,6 @@ class ThreadedTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
 
 
 def main() -> NoReturn:
-    global controller
     # command line parameter
     help = ""
     help += "Over the given port on the given address a socket communication is "
@@ -480,9 +479,9 @@ def main() -> NoReturn:
     help += "  quit : quit the server\n"
     help += "  version : response the version of the server\n"
     parser = argparse.ArgumentParser(
-        description="digital_controller_server is a socket server to control the digital controller on an serial interface. On start every settings are assumed to 0 or the given values and set to the device. A friendly kill (SIGTERM) should be possible.",
-        epilog="Author: Daniel Mohr, Egor Perevoshchikov\nDate: %s\nLicense: GNU GENERAL PUBLIC LICENSE, Version 3, 29 June 2007\n\n%s"
-        % (__digital_controller_server_date__, help),
+        description="""digital_controller_server is a socket server to control the digital controller on an serial interface.
+        On start every settings are assumed to 0 or the given values and set to the device. A friendly kill (SIGTERM) should be possible.""",
+        epilog=f"Author: Daniel Mohr, Egor Perevoshchikov\nDate: {__digital_controller_server_date__}\nLicense: GNU GENERAL PUBLIC LICENSE, Version 3, 29 June 2007\n\n{help}",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     # device /dev/DOCU0001
@@ -507,7 +506,9 @@ def main() -> NoReturn:
         type=str,
         required=False,
         dest="logfile",
-        help="Set the logfile to f. The WatchedFileHandler is used. This means, the logfile grows indefinitely until an other process (e. g. logrotate or the user itself) move or delete the logfile. Under Windows moving or deleting of open files is impossible and therefore the logfile grows indefinitely. default: %s"
+        help="""Set the logfile to f. The WatchedFileHandler is used. This means, the logfile grows indefinitely until an other process
+        (e. g. logrotate or the user itself) move or delete the logfile.
+        Under Windows moving or deleting of open files is impossible and therefore the logfile grows indefinitely. default: %s"""
         % os.path.join(tempfile.gettempdir(), "digital_controller.log"),
         metavar="f",
     )
@@ -518,7 +519,10 @@ def main() -> NoReturn:
         type=str,
         required=False,
         dest="datalogfile",
-        help="Set the datalogfile to f. Only the measurements will be logged here. The WatchedFileHandler is used. This means, the logfile grows indefinitely until an other process (e. g. logrotate or the user itself) move or delete the logfile. Under Windows moving or deleting of open files is impossible and therefore the logfile grows indefinitely. default: %s"
+        help="""Set the datalogfile to f. Only the measurements will be logged here. The WatchedFileHandler is used.
+        This means, the logfile grows indefinitely until an other process
+        (e. g. logrotate or the user itself) move or delete the logfile.
+        Under Windows moving or deleting of open files is impossible and therefore the logfile grows indefinitely. default: %s"""
         % os.path.join(tempfile.gettempdir(), "digital_controller.data"),
         metavar="f",
     )
@@ -529,7 +533,8 @@ def main() -> NoReturn:
         type=str,
         required=False,
         dest="runfile",
-        help='Set the runfile to f. If an other process is running with a given pid and writing to the same device, the program will not start. Setting f="" will disable this function. default: %s'
+        help="""Set the runfile to f. If an other process is running with a given pid and writing to the same device, the program will not start.
+        Setting f="" will disable this function. default: %s"""
         % os.path.join(tempfile.gettempdir(), "digital_controller.pids"),
         metavar="f",
     )
@@ -761,10 +766,10 @@ def main() -> NoReturn:
 
     # controller = controller_class(log=log,device=args.device,updatedelay=args.timedelay,A=args.A,B=args.B,C=args.C,D=args.D)
     controller = controller_class(
-        log, datalog, args.device, args.timedelay, args.A, args.B, args.C, args.D, args.simulate
+        log, datalog, args.device, [args.A, args.B, args.C, args.D], args.timedelay, args.simulate
     )
     try:
-        server = ThreadedTCPServer((args.ip, args.port), ThreadedTCPRequestHandler)
+        server = ThreadedTCPServer((args.ip, args.port), GTTRH(controller))
     except socket.error:
         log.exception(f"Probably port {args.port} is in use already")
         raise
@@ -772,13 +777,14 @@ def main() -> NoReturn:
     ip, port = server.server_address
     log.info("listen at %s:%d" % (ip, port))
 
-    def shutdown(signum, frame):
-        global controller
+    def shutdown(signum: int, frame: FrameType | None) -> None:
+        # global controller
         controller.log.info(f"Got signal {signum}")
         controller.log.debug(f"Number of threads: {threading.activeCount()}")
         controller.log.info("Will exit the program")
         server.shutdown()
         controller.shutdown()
+        sys.exit(1)
 
     signal.signal(signal.SIGTERM, shutdown)
     signal.signal(signal.SIGHUP, shutdown)

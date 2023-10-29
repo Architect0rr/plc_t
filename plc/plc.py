@@ -46,6 +46,7 @@ from typing import Literal
 
 from . import plc_gui
 from . import plc_tools
+from .plc_gui.plc import PLC
 from .plc_gui.misc import misc
 
 
@@ -114,7 +115,7 @@ def main() -> Literal[0]:
     log.info("running with pid %d" % os.getpid())
     # start gui
     log.debug("Starting GUI")
-    plc_gui.plc.PLC.main(log.getChild("gui"), system_conffile, conffile)
+    PLC.main(log.getChild("gui"), system_conffile, conffile)
     # after gui
     log.debug("Flushing log handlers")
     fh.flush()

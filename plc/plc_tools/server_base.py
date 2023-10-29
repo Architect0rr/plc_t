@@ -34,8 +34,9 @@ from typing import Dict, Any, List
 
 class controller_class:
     def __init__(
-        self, log: logging.Logger, datalog: logging.Logger, device: str, updatedelay: float = 1, *args
+        self, log: logging.Logger, datalog: logging.Logger, device: str, spec_args: List[Any], updatedelay: float = 1, simulate: bool = False
     ) -> None:
+        self.simulate = simulate
         self.log: logging.Logger = log
         self.datalog: logging.Logger = datalog
         self.devicename: str = device
@@ -65,7 +66,7 @@ class controller_class:
         self.set_actualvalue_to_the_device_lock: threading.Lock = threading.Lock()
         self.send_data_to_socket_lock: threading.Lock = threading.Lock()
         self.actualvalue: Dict[str, Any] = {}
-        self.myinit(*args)
+        self.myinit(spec_args)
         self.set_actualvalue_to_the_device()
         self.updatedelay: float = updatedelay  # seconds
         self.running: bool = True
@@ -75,7 +76,7 @@ class controller_class:
         self.updatethread.start()
 
     @abstractmethod
-    def myinit(self, *args) -> None:
+    def myinit(self, spec_args: List[Any]) -> None:
         ...
 
     @abstractmethod
@@ -132,15 +133,10 @@ class controller_class:
         """
         update
         """
-        global controller
         self.updatelock.acquire()  # lock for running
         while self.running:
             self.set_actualvalue_to_the_device()
-            nextupdate = self.lastupdate + self.updatedelay
-            self.lastupdate = time.time()
-            time.sleep(self.minsleeptime)
-            while self.running and (time.time() < nextupdate):
-                time.sleep(self.sleeptime)
+            time.sleep(self.updatedelay)
         self.updatelock.release()  # release the lock
 
     def shutdown(self) -> None:
@@ -152,22 +148,21 @@ class controller_class:
             self.deviceopen = False
 
     def set_setpoint(self, s: Dict[str, Any]) -> None:
-        if s is not None:
-            self.setpointlock.acquire()  # lock to set
-            self.setpoint = s.copy()
-            self.setpointlock.release()  # release the lock
-
-    def get_setpoint(self) -> Dict[str, Any]:
-        """
-        get_setpoint
-
-        So far as I know, this function is useless.
-        It only exist due to completeness.
-        """
         self.setpointlock.acquire()  # lock to set
-        s = self.setpoint
+        self.setpoint = s.copy()
         self.setpointlock.release()  # release the lock
-        return s
+
+    # def get_setpoint(self) -> Dict[str, Any]:
+    #     """
+    #     get_setpoint
+
+    #     So far as I know, this function is useless.
+    #     It only exist due to completeness.
+    #     """
+    #     self.setpointlock.acquire()  # lock to set
+    #     s = self.setpoint
+    #     self.setpointlock.release()  # release the lock
+    #     return s
 
     def get_actualvalue(self) -> Dict[str, Any]:
         self.actualvaluelock.acquire()  # lock to get new settings
