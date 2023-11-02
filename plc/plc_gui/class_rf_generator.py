@@ -35,7 +35,7 @@ import tkinter as tk
 from tkinter import ttk
 
 from .read_config_file import read_config_file
-from .controller import controller
+from .controller import CTRL
 from .misc import except_notify
 from .utils import Master
 
@@ -122,10 +122,11 @@ class class_channel:
         self._phase_write()
 
 
-class cc_gui(ttk.Frame):
-    def __init__(self, _root: ttk.LabelFrame, backend: class_channel, _log: logging.Logger) -> None:
-        super().__init__(_root)
-        self.log = _log
+class cc_gui(ttk.Frame, Master):
+    def __init__(self, _root: ttk.LabelFrame, backend: class_channel, master: Master) -> None:
+        ttk.Frame.__init__(self, _root)
+        Master.__init__(self, master, custom_name=f"gui_chan#{self.backend.n}")
+
         self.current_bonds = (0, 4095)
         self.phase_bonds = (0, 255)
         self.backend = backend
@@ -327,9 +328,7 @@ class class_rf_generator:
     class for one 'Euro_4x_RF-DC_and_RF-gen'-Generator
     """
 
-    def __init__(
-        self, exists: bool, number: int, config: read_config_file, _log: logging.Logger, pwc: controller
-    ) -> None:
+    def __init__(self, exists: bool, number: int, config: read_config_file, _log: logging.Logger, pwc: CTRL) -> None:
         """
         init of class for one 'Euro_4x_RF-DC_and_RF-gen'-Generator
         """
@@ -362,24 +361,6 @@ class class_rf_generator:
             self.writetimeout: float = config.values.getfloat(f"RF-Generator {number + 1}", "writetimeout")
             # return
             self.readbytes = 4096
-            # self.dev_gen = serial.Serial(
-            #     port=self.gen_device,
-            #     baudrate=self.boudrate,
-            #     bytesize=self.databits,
-            #     parity=self.parity,
-            #     stopbits=self.stopbits,
-            #     timeout=self.readtimeout,
-            #     write_timeout=self.writetimeout,
-            # )
-            # self.dev_dc = serial.Serial(
-            #     port=self.dc_device,
-            #     baudrate=self.boudrate,
-            #     bytesize=self.databits,
-            #     parity=self.parity,
-            #     stopbits=self.stopbits,
-            #     timeout=self.readtimeout,
-            #     write_timeout=self.writetimeout,
-            # )
 
     @if_exists_non
     @if_gen_enabled_non
@@ -535,6 +516,13 @@ class class_rf_generator:
     @if_exists_non
     def rf_on(self) -> None:
         self.gen_enabled = True
+        self.reset_rf()
+        if not self.dev_gen.is_open:
+            self.dev_gen.open()
+        self.__write_gen("@E")
+
+    @if_exists_non
+    def reset_rf(self) -> None:
         self.dev_gen = serial.Serial(
             port=self.gen_device,
             baudrate=self.boudrate,
@@ -544,9 +532,6 @@ class class_rf_generator:
             timeout=self.readtimeout,
             write_timeout=self.writetimeout,
         )
-        if not self.dev_gen.is_open:
-            self.dev_gen.open()
-        self.__write_gen("@E")
 
     @if_exists_non
     def rf_off(self) -> None:
@@ -558,6 +543,13 @@ class class_rf_generator:
     @if_exists_non
     def dc_on(self) -> None:
         self.dc_enabled = True
+        self.reset_dc()
+        if not self.dev_dc.is_open:
+            self.dev_dc.open()
+        self.__write_dc("#O")
+
+    @if_exists_non
+    def reset_dc(self) -> None:
         self.dev_dc = serial.Serial(
             port=self.dc_device,
             baudrate=self.boudrate,
@@ -567,9 +559,6 @@ class class_rf_generator:
             timeout=self.readtimeout,
             write_timeout=self.writetimeout,
         )
-        if not self.dev_dc.is_open:
-            self.dev_dc.open()
-        self.__write_dc("#O")
 
     @if_exists_non
     def dc_off(self) -> None:
@@ -606,7 +595,7 @@ class rfg_gui(ttk.LabelFrame, Master):
         self.exists = self.backend.exists
         if self.exists:
             self.power_status: tk.IntVar = tk.IntVar()
-            self.power_status_checkbutton: tk.Checkbutton = tk.Checkbutton(
+            self.power_status_checkbutton: ttk.Checkbutton = ttk.Checkbutton(
                 self,
                 text=f"Power RF-Generator {self.backend.number + 1}",
                 command=self.btn_power,
@@ -614,27 +603,23 @@ class rfg_gui(ttk.LabelFrame, Master):
                 state=tk.DISABLED,
             )
             self.power_status_checkbutton.pack()
+
+            self.btn_reset_rf = ttk.Button(self, text="Reset RF", command=self.reset_rf)
+            self.btn_reset_rf.pack()
+            self.btn_reset_dc = ttk.Button(self, text="Reset DC", command=self.reset_dc)
+            self.btn_reset_dc.pack()
             self.channels_frame = ttk.LabelFrame(self, text="Channels")
             self.channels_frame.pack()
             self.channels: List[cc_gui] = [
-                cc_gui(self.channels_frame, _backend, self.log.getChild(f"gui_chan{_backend.n}"))
-                for _backend in self.backend.channel
+                cc_gui(self.channels_frame, _backend, self) for _backend in self.backend.channel
             ]
             [c.pack() for c in self.channels]
 
-            # self.setpoint_channels_frame = tk.ttk.LabelFrame(self, text="Setpoint channels")
-            # self.setpoint_channels_frame.pack()
-            # self.setpoint_channels: List[cc_gui] = [
-            #     cc_gui(self.setpoint_channels_frame, _backend) for _backend in self.backend.setpoint_channel
-            # ]
-            # [c.pack() for c in self.setpoint_channels]
+    def reset_dc(self) -> None:
+        self.backend.reset_dc()
 
-            # self.actualvalue_channels_frame = tk.ttk.LabelFrame(self, text="AV channels")
-            # self.actualvalue_channels_frame.pack()
-            # self.actualvalue_channels: List[cc_gui] = [
-            #     cc_gui(self.actualvalue_channels_frame, _backend) for _backend in self.backend.actualvalue_channel
-            # ]
-            # [c.pack() for c in self.actualvalue_channels]
+    def reset_rf(self) -> None:
+        self.backend.reset_rf()
 
     def btn_power(self) -> None:
         self.log.debug("btn_power")

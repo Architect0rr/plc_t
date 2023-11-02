@@ -18,16 +18,15 @@
 # along with PlasmaLabControl.  If not, see <http://www.gnu.org/licenses/>.
 
 import threading
-from typing import Dict, Any
+from typing import Dict, Any, Protocol, Union
 from abc import abstractmethod
 
 
-class controller:
-    def __init__(self) -> None:
-        self.lock = threading.Lock()
-        self.setpoint: Dict[str, Any] = {}
-        self.actualvalue: Dict[str, Any] = {}
-        self.connected = False
+class CTRL(Protocol):
+    lock: Union[threading.Lock, threading.RLock]
+    setpoint: Dict[str, Any]
+    actualvalue: Dict[str, Any]
+    connected: bool
 
     @abstractmethod
     def start_request(self) -> None:

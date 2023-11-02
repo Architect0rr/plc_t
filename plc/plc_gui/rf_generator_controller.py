@@ -24,21 +24,23 @@
 class for rf-generator controller
 """
 
+import threading
 import logging
 import logging.handlers
 from typing import Dict, List, Any
 
 from .class_rf_generator import class_rf_generator
 from .read_config_file import read_config_file
-from .controller import controller
+from .base_controller import CTRL
 
 
-class rf_generator_controller(controller):
+class rf_generator_controller(CTRL):
     """
     class for rf-generator controller (trinamix_tmcm_351)
     """
 
-    def __init__(self, config: read_config_file, _log: logging.Logger, controllers: Dict[str, controller]) -> None:
+    def __init__(self, config: read_config_file, _log: logging.Logger, controllers: Dict[str, CTRL]) -> None:
+        self.lock = threading.RLock()
         self.log = _log
         self.log.info("init")
         self.readbytes = 4096  # read this number of bytes at a time

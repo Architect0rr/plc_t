@@ -4,18 +4,19 @@ Author: Daniel Mohr
 Date: 2013-03-05
 """
 
+import time
 import serial
+import threading
 import tkinter as tk
 from tkinter import ttk
-import time
 
 from typing import Callable, List, Dict, Union
 
 from . import read_config_file
-from .controller import controller
+from .base_controller import CTRL
 
 
-class translation_stage_controller(controller):
+class translation_stage_controller(CTRL):
     """class for translation stage controller (trinamix_tmcm_351)
 
     Author: Daniel Mohr
@@ -25,7 +26,7 @@ class translation_stage_controller(controller):
     def __init__(
         self, config: read_config_file.read_config_file, pw: ttk.LabelFrame, debugprint: Callable[[str], None]
     ) -> None:
-        # def __init__(self, config=None, pw=None, debugprint=None):
+        self.lock = threading.RLock()
         self.readbytes = 4096  # read this number of bytes at a time
         self.readbytes = 16384  # read this number of bytes at a time
         self.debug = True
@@ -60,12 +61,13 @@ class translation_stage_controller(controller):
         )
         self.device.port = self.devicename
         self.update_intervall = int(self.config.values.get("translation stage controller", "update_intervall"))
-        self.setpoint: Dict[str, Union[bool, int]] = dict()
+        self.setpoint: Dict[str, Union[bool, int]] = {}
+        self.connected: bool  # Must override values in setpoint and actualval
         self.setpoint["connect"] = False
         self.setpoint["x rel"] = 0
         self.setpoint["y rel"] = 0
         self.setpoint["z rel"] = 0
-        self.actualvalue = dict()
+        self.actualvalue = {}
         self.actualvalue["connect"] = False
         self.write = self.defaultprint
         # values for the gui

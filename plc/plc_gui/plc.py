@@ -25,7 +25,6 @@ GUI for plc
 """
 
 import os
-import sys
 import time
 import logging
 import threading
@@ -33,7 +32,7 @@ import subprocess
 import configparser
 from pathlib import Path
 from types import FrameType
-from typing import Dict, List, NoReturn
+from typing import Dict, List
 
 import tkinter as tk
 import tkinter.messagebox
@@ -53,9 +52,6 @@ from .utils import Master
 from .read_config_file import read_config_file
 from .misc.splash import PassiveSplash, Splasher
 
-# from . import camera
-# from . import acceleration_sensor
-
 
 class PLC(tk.Tk, Master):
     """
@@ -63,7 +59,7 @@ class PLC(tk.Tk, Master):
     """
 
     @classmethod
-    def main(cls, log: logging.Logger, system_conffile: Path, conffile: Path) -> NoReturn:
+    def main(cls, log: logging.Logger, system_conffile: Path, conffile: Path) -> None:
         configs = read_config_file(system_wide_ini_file=system_conffile.as_posix(), user_ini_file=conffile.as_posix())
         app = cls(log, configs, conffile)
         app.mainloop()
@@ -176,12 +172,12 @@ class PLC(tk.Tk, Master):
         self.passivesplash.destroy()
         self.deiconify()
 
-    def exit(self) -> NoReturn:
+    def exit(self) -> None:
         self.log.debug("Exit called")
         super().exit()
         time.sleep(0.6)
         self.log.info("Good bye!")
-        sys.exit(0)
+        # sys.exit(0)
 
     def start_environment_sensor_5(self):
         if self.configs.values.getboolean("environment_sensor_5", "start_sensor"):
@@ -436,7 +432,7 @@ class Control(ttk.Frame, Master):
         self.controller_window.grid(column=0, row=0)
 
         # controller in a dict
-        self.controller: Dict[str, base_controller.controller] = {}
+        self.controller: Dict[str, base_controller.CTRL] = {}
 
         self.digital_controller = controller.digital_controller(self.log.getChild("dc"), self.configs)
         self.controller["dc"] = self.digital_controller

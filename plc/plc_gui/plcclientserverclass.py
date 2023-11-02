@@ -39,7 +39,7 @@ from tkinter import ttk
 
 from .read_config_file import read_config_file
 from ..plc_tools.plc_socket_communication import socket_communication, socketlock
-from .misc.splash import Splasher
+from .base_controller import CTRL
 from .utils import Master
 
 T = TypeVar("T")
@@ -94,7 +94,7 @@ def ee_report(fn: Callable[..., T]):  # type: ignore
     return wrapper
 
 
-class socket_communication_class(socket_communication):
+class socket_communication_class(socket_communication, CTRL):
     """
     base class for continued socket communication
     """
@@ -328,9 +328,7 @@ class socket_communication_class(socket_communication):
 
 
 class scs_gui(ttk.LabelFrame, Master):
-    def __init__(
-        self, _root: ttk.LabelFrame, master: Master, backend: socket_communication_class, _name: str
-    ) -> None:
+    def __init__(self, _root: ttk.LabelFrame, master: Master, backend: socket_communication_class, _name: str) -> None:
         ttk.LabelFrame.__init__(self, _root, text=_name)
         Master.__init__(self, master, custom_name=_name)
         self.backend = backend

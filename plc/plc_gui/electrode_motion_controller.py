@@ -27,21 +27,23 @@ class for electrode motion controller (zpos)
 import time
 import serial
 import logging
-from typing import List
+import threading
+from typing import List, Dict, Any
 
 from . import read_config_file
-from .base_controller import controller
+from .base_controller import CTRL
 
 
-class electrode_motion_controller(controller):
+class electrode_motion_controller(CTRL):
     """
     class for electrode motion controller (zpos)
     """
 
-    def __init__(
-        self, power_controller: controller, config: read_config_file.read_config_file, _log: logging.Logger
-    ) -> None:
-        self.power_controller: controller = power_controller
+    def __init__(self, power_controller: CTRL, config: read_config_file.read_config_file, _log: logging.Logger) -> None:
+        self.lock = threading.RLock()  # not used
+        self.setpoint: Dict[str, Any] = {}  # not used
+        self.actualvalue: Dict[str, Any] = {}  # not used
+        self.power_controller = power_controller
         self.readbytes = 4096  # read this number of bytes at a time
         self.readbytes = 16384  # read this number of bytes at a time
         self.debug = True

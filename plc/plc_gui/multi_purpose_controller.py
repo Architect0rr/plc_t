@@ -29,10 +29,10 @@ from typing import Dict, List, Any
 
 from .plcclientserverclass import data_lock, general_lock, socket_communication_class
 from .read_config_file import read_config_file
-from .base_controller import controller
+from .base_controller import CTRL
 
 
-class multi_purpose_controller(socket_communication_class, controller):
+class multi_purpose_controller(socket_communication_class, CTRL):
     """
     class for multi purpose controller (blue box)
     """
@@ -119,6 +119,10 @@ class multi_purpose_controller(socket_communication_class, controller):
         port = "DAC"
         for channel in range(4):
             self.setpoint[port][channel] = self.actualvalue[port][channel]
+
+    @data_lock
+    def myextra_socket_communication_with_server(self) -> None:  # it is needed to delete it in future
+        pass
 
 
 if __name__ == "__main__":

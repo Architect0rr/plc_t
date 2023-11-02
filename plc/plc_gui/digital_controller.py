@@ -29,15 +29,15 @@ from typing import List, Dict, Any
 
 from .plcclientserverclass import socket_communication_class, if_connect, data_lock
 from .read_config_file import read_config_file
-from .base_controller import controller
+from .base_controller import CTRL
 
 
-class digital_controller(socket_communication_class, controller):
+class digital_controller(socket_communication_class, CTRL):
     """
     class for digital controller (red box)
     """
 
-    def __init__(self, log: logging.Logger, config: read_config_file, bufsize: int = 4096):
+    def __init__(self, log: logging.Logger, config: read_config_file, bufsize: int = 4096) -> None:
         super().__init__(log, config, "dc", bufsize)
 
         self.myservername = "digital_controller_server"

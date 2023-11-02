@@ -33,15 +33,15 @@ from typing import Dict
 
 from ..plc_tools.conversion import b2onoff, msccm2volt, volt2msccm
 from .read_config_file import read_config_file
-from .controller import controller
+from .base_controller import CTRL
 from .utils import Master
 
 
 class gs:
-    def __init__(self, config: read_config_file, _log: logging.Logger, _controller: Dict[str, controller]) -> None:
+    def __init__(self, config: read_config_file, _log: logging.Logger, _controller: Dict[str, CTRL]) -> None:
         self.log = _log
         self.config = config
-        self.controller: Dict[str, controller] = _controller
+        self.controller: Dict[str, CTRL] = _controller
         self.mpsc = self.config.values.get("gas system", "membran_pump_status_controller")
         self.mpsp = self.config.values.get("gas system", "membran_pump_status_port")
         self.mpsca = self.config.values.getint("gas system", "membran_pump_status_channel")
