@@ -26,7 +26,7 @@ gui for controlling gas system
 """
 
 import logging
-import tkinter
+import tkinter as tk
 from tkinter import ttk
 
 from typing import Dict
@@ -219,116 +219,105 @@ class gas_system(ttk.LabelFrame, Master):
 
         self.backend = _backend
         # create gui
-        self.pumps_frame = tkinter.Frame(self)
+        self.pumps_frame = ttk.Frame(self)
         self.pumps_frame.pack()
-        self.mass_flow_frame = tkinter.LabelFrame(self, text="Mass Flow Controller")
+        self.mass_flow_frame = ttk.LabelFrame(self, text="Mass Flow Controller")
         self.mass_flow_frame.pack()
         # membran pump
-        self.membran_pump_status = tkinter.IntVar()
-        self.membran_pump_checkbutton = tkinter.Checkbutton(
+        self.membran_pump_status = tk.IntVar()
+        self.membran_pump_checkbutton = ttk.Checkbutton(
             self.pumps_frame,
             text="Mem. Pump",
             command=self.membran_pump,
             variable=self.membran_pump_status,
-            state=tkinter.DISABLED,
+            state=tk.DISABLED,
         )
         self.membran_pump_checkbutton.grid(row=2, column=0)
-        self.membran_pump_status_val = tkinter.StringVar()
-        self.membran_pump_status_val_label = tkinter.Label(
-            self.pumps_frame, textvariable=self.membran_pump_status_val, height=1, width=3
+        self.membran_pump_status_val = tk.StringVar()
+        self.membran_pump_status_val_label = ttk.Label(
+            self.pumps_frame, textvariable=self.membran_pump_status_val, width=3
         )
         self.membran_pump_status_val.set("val")
         self.membran_pump_status_val_label.grid(row=2, column=1)
         # self.membran_pump_checkbutton.deselect()
         # self.membran_pump_checkbutton.select()
         # turbo pump 1
-        self.turbo_pump_1_status = tkinter.IntVar()
-        self.turbo_pump_1_checkbutton = tkinter.Checkbutton(
+        self.turbo_pump_1_status = tk.IntVar()
+        self.turbo_pump_1_checkbutton = ttk.Checkbutton(
             self.pumps_frame,
             text="Turbo Pump 1",
             command=self.turbo_pump_1,
             variable=self.turbo_pump_1_status,
-            state=tkinter.DISABLED,
+            state=tk.DISABLED,
         )
         self.turbo_pump_1_checkbutton.grid(row=2, column=2)
-        self.turbo_pump_1_status_val = tkinter.StringVar()
-        self.turbo_pump_1_status_label = tkinter.Label(
-            self.pumps_frame, textvariable=self.turbo_pump_1_status_val, height=1, width=5
-        )
+        self.turbo_pump_1_status_val = tk.StringVar()
+        self.turbo_pump_1_status_label = ttk.Label(self.pumps_frame, textvariable=self.turbo_pump_1_status_val, width=5)
         self.turbo_pump_1_status_val.set("val")
         self.turbo_pump_1_status_label.grid(row=2, column=3)
-        self.turbo_pump_1_rpm_val = tkinter.StringVar()
-        self.turbo_pump_1_rpm_label = tkinter.Label(
-            self.pumps_frame, textvariable=self.turbo_pump_1_rpm_val, height=1, width=5
-        )
+        self.turbo_pump_1_rpm_val = tk.StringVar()
+        self.turbo_pump_1_rpm_label = ttk.Label(self.pumps_frame, textvariable=self.turbo_pump_1_rpm_val, width=5)
         self.turbo_pump_1_rpm_val.set("val")
         self.turbo_pump_1_rpm_label.grid(row=2, column=4)
-        self.turbo_pump_1_error_val = tkinter.StringVar()
-        self.turbo_pump_1_error_label = tkinter.Label(
-            self.pumps_frame, textvariable=self.turbo_pump_1_error_val, height=1, width=25
-        )
+        self.turbo_pump_1_error_val = tk.StringVar()
+        self.turbo_pump_1_error_label = ttk.Label(self.pumps_frame, textvariable=self.turbo_pump_1_error_val, width=25)
         self.turbo_pump_1_error_val.set("val")
         self.turbo_pump_1_error_label.grid(row=2, column=5)
         # turbo pump 2
-        self.turbo_pump_2_status = tkinter.IntVar()
-        self.turbo_pump_2_checkbutton = tkinter.Checkbutton(
+        self.turbo_pump_2_status = tk.IntVar()
+        self.turbo_pump_2_checkbutton = ttk.Checkbutton(
             self.pumps_frame,
             text="Turbo Pump 2",
             command=self.turbo_pump_2,
             variable=self.turbo_pump_2_status,
-            state=tkinter.DISABLED,
+            state=tk.DISABLED,
             offvalue=False,
             onvalue=True,
         )
         self.turbo_pump_2_checkbutton.grid(row=3, column=2)
-        self.turbo_pump_2_status_val = tkinter.StringVar()
-        self.turbo_pump_2_status_label = tkinter.Label(
-            self.pumps_frame, textvariable=self.turbo_pump_2_status_val, height=1, width=5
-        )
+        self.turbo_pump_2_status_val = tk.StringVar()
+        self.turbo_pump_2_status_label = ttk.Label(self.pumps_frame, textvariable=self.turbo_pump_2_status_val, width=5)
         self.turbo_pump_2_status_val.set("val")
         self.turbo_pump_2_status_label.grid(row=3, column=3)
-        self.turbo_pump_2_rpm_val = tkinter.StringVar()
-        self.turbo_pump_2_rpm_label = tkinter.Label(
-            self.pumps_frame, textvariable=self.turbo_pump_2_rpm_val, height=1, width=5
-        )
+        self.turbo_pump_2_rpm_val = tk.StringVar()
+        self.turbo_pump_2_rpm_label = ttk.Label(self.pumps_frame, textvariable=self.turbo_pump_2_rpm_val, width=5)
         self.turbo_pump_2_rpm_val.set("val")
         self.turbo_pump_2_rpm_label.grid(row=3, column=4)
-        self.turbo_pump_2_error_val = tkinter.StringVar()
-        self.turbo_pump_2_error_label = tkinter.Label(
-            self.pumps_frame, textvariable=self.turbo_pump_2_error_val, height=1, width=25
-        )
+        self.turbo_pump_2_error_val = tk.StringVar()
+        self.turbo_pump_2_error_label = ttk.Label(self.pumps_frame, textvariable=self.turbo_pump_2_error_val, width=25)
         self.turbo_pump_2_error_val.set("val")
         self.turbo_pump_2_error_label.grid(row=3, column=5)
         # Mass Flow Controller
-        self.mass_flow_status = tkinter.IntVar()
-        self.mass_flow_checkbutton = tkinter.Checkbutton(
+        self.mass_flow_status = tk.IntVar()
+        self.mass_flow_checkbutton = ttk.Checkbutton(
             self.mass_flow_frame,
             text="ON/OFF",
             command=self.mass_flow,
             variable=self.mass_flow_status,
-            state=tkinter.DISABLED,
+            state=tk.DISABLED,
             offvalue=False,
             onvalue=True,
         )
         self.mass_flow_checkbutton.grid(column=0, row=0)
-        self.mass_flow_status_val = tkinter.StringVar()
-        self.mass_flow_status_label = tkinter.Label(
-            self.mass_flow_frame, textvariable=self.mass_flow_status_val, height=1, width=5
-        )
+        self.mass_flow_status_val = tk.StringVar()
+        self.mass_flow_status_label = ttk.Label(self.mass_flow_frame, textvariable=self.mass_flow_status_val, width=5)
         self.mass_flow_status_val.set("val")
         self.mass_flow_status_label.grid(column=1, row=0)
-        self.mass_flow_set_flow_rate_val = tkinter.StringVar()
-        self.mass_flow_set_flow_rate_entry = tkinter.Entry(
-            self.mass_flow_frame, textvariable=self.mass_flow_set_flow_rate_val, width=8, state=tkinter.DISABLED
+        self.mass_flow_set_flow_rate_val = tk.StringVar()
+        self.mass_flow_set_flow_rate_entry = tk.Entry(
+            self.mass_flow_frame,
+            textvariable=self.mass_flow_set_flow_rate_val,
+            width=8,
+            state=tk.DISABLED,  # TODO: entry is not validate
         )
         self.mass_flow_set_flow_rate_entry.grid(column=2, row=0)
-        self.mass_flow_set_flow_rate_button = tkinter.Button(
-            self.mass_flow_frame, command=self.set_mass_flow_rate, text="set", state=tkinter.DISABLED
+        self.mass_flow_set_flow_rate_button = ttk.Button(
+            self.mass_flow_frame, command=self.set_mass_flow_rate, text="set", state=tk.DISABLED
         )
         self.mass_flow_set_flow_rate_button.grid(column=3, row=0)
-        self.mass_flow_flow_rate_val = tkinter.StringVar()
-        self.mass_flow_flow_rate_label = tkinter.Label(
-            self.mass_flow_frame, textvariable=self.mass_flow_flow_rate_val, height=1, width=14
+        self.mass_flow_flow_rate_val = tk.StringVar()
+        self.mass_flow_flow_rate_label = ttk.Label(
+            self.mass_flow_frame, textvariable=self.mass_flow_flow_rate_val, width=14
         )
         self.mass_flow_flow_rate_val.set("val")
         self.mass_flow_flow_rate_label.grid(column=4, row=0)
@@ -385,28 +374,28 @@ class gas_system(ttk.LabelFrame, Master):
         self.mass_flow_flow_rate_val.set("%.2f msccm" % volt2msccm(self.backend.mass_flow_controller_measure_rate()))
 
         if self.backend.mpc_connected():
-            self.membran_pump_checkbutton.configure(state=tkinter.NORMAL)
+            self.membran_pump_checkbutton.configure(state=tk.NORMAL)
         else:
-            self.membran_pump_checkbutton.configure(state=tkinter.DISABLED)
+            self.membran_pump_checkbutton.configure(state=tk.DISABLED)
 
         if self.backend.tp1c_connected():
-            self.turbo_pump_1_checkbutton.configure(state=tkinter.NORMAL)
+            self.turbo_pump_1_checkbutton.configure(state=tk.NORMAL)
         else:
-            self.turbo_pump_1_checkbutton.configure(state=tkinter.DISABLED)
+            self.turbo_pump_1_checkbutton.configure(state=tk.DISABLED)
 
         if self.backend.tp2c_connected():
-            self.turbo_pump_2_checkbutton.configure(state=tkinter.NORMAL)
+            self.turbo_pump_2_checkbutton.configure(state=tk.NORMAL)
         else:
-            self.turbo_pump_2_checkbutton.configure(state=tkinter.DISABLED)
+            self.turbo_pump_2_checkbutton.configure(state=tk.DISABLED)
 
         if self.backend.mfc_connected():
-            self.mass_flow_checkbutton.configure(state=tkinter.NORMAL)
-            self.mass_flow_set_flow_rate_entry.configure(state=tkinter.NORMAL)
-            self.mass_flow_set_flow_rate_button.configure(state=tkinter.NORMAL)
+            self.mass_flow_checkbutton.configure(state=tk.NORMAL)
+            self.mass_flow_set_flow_rate_entry.configure(state=tk.NORMAL)
+            self.mass_flow_set_flow_rate_button.configure(state=tk.NORMAL)
         else:
-            self.mass_flow_checkbutton.configure(state=tkinter.DISABLED)
-            self.mass_flow_set_flow_rate_entry.configure(state=tkinter.DISABLED)
-            self.mass_flow_set_flow_rate_button.configure(state=tkinter.DISABLED)
+            self.mass_flow_checkbutton.configure(state=tk.DISABLED)
+            self.mass_flow_set_flow_rate_entry.configure(state=tk.DISABLED)
+            self.mass_flow_set_flow_rate_button.configure(state=tk.DISABLED)
 
 
 if __name__ == "__main__":

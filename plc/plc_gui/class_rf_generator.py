@@ -125,11 +125,11 @@ class class_channel:
 class cc_gui(ttk.Frame, Master):
     def __init__(self, _root: ttk.LabelFrame, backend: class_channel, master: Master) -> None:
         ttk.Frame.__init__(self, _root)
+        self.backend = backend
         Master.__init__(self, master, custom_name=f"gui_chan#{self.backend.n}")
 
         self.current_bonds = (0, 4095)
         self.phase_bonds = (0, 255)
-        self.backend = backend
         self.onoff_status: tk.IntVar = tk.IntVar()
         self.onoff_status_checkbutton: tk.Checkbutton = tk.Checkbutton(
             self,

@@ -470,68 +470,24 @@ class Control(ttk.Frame, Master):
         self.rf_generator_controller = controller.rf_generator_controller(
             self.configs, self.log.getChild("rfgc"), self.controller
         )
-        self.controller["rfgc"] = self.rf_generator_controller
-        self.rf_generator = rf_generator.rf_generator_gui(self, self, self.controller["rfgc"])
+        self.rf_generator = rf_generator.rf_generator_gui(self, self, self.rf_generator_controller)
         self.rf_generator.pack()
 
-        # ----------------------------
-        # translation stage controller
+        self.diagnostic_particles = diagnostic_particles.diagnostic_particles(
+            self,
+            self,
+            self.controller,
+        )
+        self.diagnostic_particles.pack()
+
         self.translation_stage_device = self.configs.values.get("translation stage controller", "devicename")
         if self.translation_stage_device != "-1":
-            self.translation_stage_controller_window = ttk.LabelFrame(
-                self.controller_window, text="translation stage", labelanchor="n"
+            self.translation_stage_controller = controller.TSC(self.configs, self.controller, self.log.getChild("TSC"))
+            # self.translation_stage_controller.set_default_values()
+            self.tsc_gui = translation_stage.translation_stage(
+                self, self.translation_stage_controller, self.controller, self
             )
-            self.translation_stage_controller_window.grid(column=3, row=0)
-            self.translation_stage_controller = controller.translation_stage_controller(
-                config=self.configs,
-                pw=self.translation_stage_controller_window,
-                debugprint=self.debugprint,
-            )
-            self.controller["tsc"] = self.translation_stage_controller
-            self.controller["tsc"].gui()
-            self.controller["tsc"].set_default_values()
-
-        # create block for translation stage
-        if self.translation_stage_device != "-1":
-            self.translation_stage_window = ttk.LabelFrame(self, text="Translation Stage")
-            self.translation_stage_window.pack()
-            self.translation_stage = translation_stage.translation_stage(
-                config=self.configs,
-                pw=self.translation_stage_window,
-                _log=self.log.getChild("tr_stage"),
-                controller=self.controller,
-            )
-
-        # create block for diagnostic/particles
-        self.diagnostic_particles_window = ttk.LabelFrame(self, text="Diagnostics/Particles")
-        self.diagnostic_particles_window.pack()
-        self.diagnostic_particles = diagnostic_particles.diagnostic_particles(
-            config=self.configs,
-            pw=self.diagnostic_particles_window,
-            debugprint=self.debugprint,
-            controller=self.controller,
-        )
-
-        if self.configs.values.get("dispensers", "key_binding_dispenser1") != "-1":
-            self.bind(
-                self.configs.values.get("dispensers", "key_binding_dispenser1"),
-                self.shake_dispenser1,  # type: ignore
-            )
-        if self.configs.values.get("dispensers", "key_binding_dispenser2") != "-1":
-            self.bind(
-                self.configs.values.get("dispensers", "key_binding_dispenser2"),
-                self.shake_dispenser2,  # type: ignore
-            )
-        if self.configs.values.get("dispensers", "key_binding_dispenser3") != "-1":
-            self.bind(
-                self.configs.values.get("dispensers", "key_binding_dispenser3"),
-                self.shake_dispenser3,  # type: ignore
-            )
-        if self.configs.values.get("dispensers", "key_binding_dispenser4") != "-1":
-            self.bind(
-                self.configs.values.get("dispensers", "key_binding_dispenser4"),
-                self.shake_dispenser4,  # type: ignore
-            )
+            self.tsc_gui.pack()
 
     def exit(self) -> None:
         super().exit()
@@ -552,22 +508,6 @@ class Control(ttk.Frame, Master):
                 self.controller["tsc"].stop_request()
             except Exception:
                 self.log.exception("Cannot properly stop translation_stage_device")
-
-    def shake_dispenser1(self, event: None = None) -> None:
-        # if event is not None:
-        self.diagnostic_particles.shake_dispenser1()
-
-    def shake_dispenser2(self, event: None = None) -> None:
-        # if event is not None:
-        self.diagnostic_particles.shake_dispenser2()
-
-    def shake_dispenser3(self, event: None = None) -> None:
-        # if event is not None:
-        self.diagnostic_particles.shake_dispenser3()
-
-    def shake_dispenser4(self, event: None = None) -> None:
-        # if event is not None:
-        self.diagnostic_particles.shake_dispenser4()
 
     def debugprint(self, msg: str) -> None:
         self.log.debug(f"(DEPRECATED LOG): {msg}")

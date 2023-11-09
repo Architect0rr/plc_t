@@ -6,38 +6,35 @@ Date: 2013-03-05
 
 import time
 import serial
+import logging
 import threading
-import tkinter as tk
-from tkinter import ttk
+from typing import List, Dict
 
-from typing import Callable, List, Dict, Union
 
-from . import read_config_file
+from .read_config_file import read_config_file
 from .base_controller import CTRL
 
 
-class translation_stage_controller(CTRL):
+class TSC(CTRL):
     """class for translation stage controller (trinamix_tmcm_351)
 
     Author: Daniel Mohr
     Date: 2012-08-27
     """
 
-    def __init__(
-        self, config: read_config_file.read_config_file, pw: ttk.LabelFrame, debugprint: Callable[[str], None]
-    ) -> None:
+    def __init__(self, config: read_config_file, controller: Dict[str, CTRL], log: logging.Logger) -> None:
         self.lock = threading.RLock()
         self.readbytes = 4096  # read this number of bytes at a time
         self.readbytes = 16384  # read this number of bytes at a time
         self.debug = True
+        self.log = log
         self.config = config
-        self.padx = self.config.values.get("gui", "padx")
-        self.pady = self.config.values.get("gui", "pady")
-        self.pw = pw
-        self.debugprint = debugprint
+        self.pc = controller[self.config.values.get("translation stage controller", "power_controller")]
+        self.pp = self.config.values.get("translation stage controller", "power_port")
+        self.pca = self.config.values.getint("translation stage controller", "power_channel")
         self.lastupdate = time.time()
         self.devicename = self.config.values.get("translation stage controller", "devicename")
-        self.boudrate = int(self.config.values.get("translation stage controller", "boudrate"))
+        self.boudrate = self.config.values.getint("translation stage controller", "boudrate")
         databits: List[int] = [0, 1, 2, 3, 4, serial.FIVEBITS, serial.SIXBITS, serial.SEVENBITS, serial.EIGHTBITS]
         self.databits = databits[int(self.config.values.get("translation stage controller", "databits"))]
         self.parity = serial.PARITY_NONE
@@ -48,10 +45,90 @@ class translation_stage_controller(CTRL):
         elif self.config.values.get("translation stage controller", "stopbits") == "2":
             self.stopbits = serial.STOPBITS_TWO
 
-        self.readtimeout = float(self.config.values.get("translation stage controller", "readtimeout"))
-        self.writetimeout = int(self.config.values.get("translation stage controller", "writetimeout"))
+        self.readtimeout = self.config.values.getfloat("translation stage controller", "readtimeout")
+        self.writetimeout = self.config.values.getint("translation stage controller", "writetimeout")
+        self.update_intervall = self.config.values.getint("translation stage controller", "update_intervall")
+        self.setpoint: Dict[str, None] = {}
+        self.actualvalue: Dict[str, None] = {}
+        self.connected: bool = False
+
+    def __write(self, s: str) -> int:
+        d = self.device.write(s.encode("utf-8"))
+        return d if d is not None else 0
+
+    def __read(self) -> str:
+        return self.device.read(self.readbytes).decode("utf-8")
+
+    @property
+    def x(self) -> int:
+        return self._x
+
+    @x.setter
+    def x(self, value: int) -> None:
+        self._x = value
+        self.log.debug(f"X pos changed to {value}, writting to device")
+        self.__x_write()
+        self._x = 0
+
+    def __x_write(self) -> None:
+        self.__write(f"AMVP REL,0,{self._x}\r")
+        self.log.debug(f"From device: {self.__read()}")
+
+    @property
+    def y(self) -> int:
+        return self._y
+
+    @y.setter
+    def y(self, value: int) -> None:
+        self._y = value
+        self.log.debug(f"X pos changed to {value}, writting to device")
+        self.__y_write()
+        self._y = 0
+
+    def __y_write(self) -> None:
+        self.__write(f"AMVP REL,1,{self._y}\r")
+        self.log.debug(f"From device: {self.__read()}")
+
+    @property
+    def z(self) -> int:
+        return self._z
+
+    @z.setter
+    def z(self, value: int) -> None:
+        self._z = value
+        self.log.debug(f"X pos changed to {value}, writting to device")
+        self.__z_write()
+        self._z = 0
+
+    def __z_write(self) -> None:
+        self.__write(f"AMVP REL,2,{self._z}\r")
+        self.log.debug(f"From device: {self.__read()}")
+
+    def power(self, state: bool) -> None:
+        self.pc.setpoint[self.pp][self.pca] = state
+
+    # def set_default_values(self) -> None:
+    #     """set default values
+
+    #     set setpoint[...] to None
+    #     set actualvalue[...] to None
+
+    #     Author: Daniel Mohr
+    #     Date: 2012-08-27
+    #     """
+    #     self.x = 0
+    #     self.y = 0
+    #     self.z = 0
+
+    def start_request(self) -> bool:
+        return self.start()
+
+    def stop_request(self) -> bool:
+        return self.stop()
+
+    def start(self) -> bool:
         self.device = serial.Serial(
-            port=None,
+            port=self.devicename,
             baudrate=self.boudrate,
             bytesize=self.databits,
             parity=self.parity,
@@ -59,157 +136,23 @@ class translation_stage_controller(CTRL):
             timeout=self.readtimeout,
             write_timeout=self.writetimeout,
         )
-        self.device.port = self.devicename
-        self.update_intervall = int(self.config.values.get("translation stage controller", "update_intervall"))
-        self.setpoint: Dict[str, Union[bool, int]] = {}
-        self.connected: bool  # Must override values in setpoint and actualval
-        self.setpoint["connect"] = False
-        self.setpoint["x rel"] = 0
-        self.setpoint["y rel"] = 0
-        self.setpoint["z rel"] = 0
-        self.actualvalue = {}
-        self.actualvalue["connect"] = False
-        self.write = self.defaultprint
-        # values for the gui
-        self.isgui = False
-        # self.start_button = None
-        # self.stop_button = None
-        self.updateid = None
-
-    # def debugprint(self, s):
-    #     if self.debug:
-    #         print(s)
-
-    def defaultprint(self, s: str) -> None:
-        pass
-
-    def set_default_values(self) -> None:
-        """set default values
-
-        set setpoint[...] to None
-        set actualvalue[...] to None
-
-        Author: Daniel Mohr
-        Date: 2012-08-27
-        """
-        self.setpoint["x rel"] = 0
-        self.setpoint["y rel"] = 0
-        self.setpoint["z rel"] = 0
-
-    def update(self, restart=True) -> None:
-        """if necessary write values self.setpoint to device
-        and read them from device to self.actualvalue
-
-        Author: Daniel Mohr
-        Date: 2012-08-27
-        """
-        selfrestart = False
-        write2dev = False
-        write2dev_string = ""
-        if self.actualvalue["connect"]:
-            selfrestart = True
-            if self.setpoint["x rel"] is not None and self.setpoint["x rel"] != 0:
-                steps = int(self.setpoint["x rel"])
-                self.debugprint("translation stage x %d" % steps)
-                write2dev_string = "%sAMVP REL,0,%d\r" % (write2dev_string, steps)
-                write2dev = True
-                self.setpoint["x rel"] = 0
-            if self.setpoint["y rel"] is not None and self.setpoint["y rel"] != 0:
-                steps = int(self.setpoint["y rel"])
-                self.debugprint("translation stage y %d" % steps)
-                write2dev_string = "%sAMVP REL,1,%d\r" % (write2dev_string, steps)
-                write2dev = True
-                self.setpoint["y rel"] = 0
-            if self.setpoint["z rel"] is not None and self.setpoint["z rel"] != 0:
-                steps = int(self.setpoint["z rel"])
-                self.debugprint("translation stage z %d" % steps)
-                write2dev_string = "%sAMVP REL,2,%d\r" % (write2dev_string, steps)
-                write2dev = True
-                self.setpoint["z rel"] = 0
-            l = None
-            try:
-                l = self.device.read(self.readbytes).decode("utf-8")
-            except Exception:
-                pass
-            if l:
-                self.debugprint(l)  # , prefix="[translation stage received] ", t=1)
-        if self.setpoint["connect"] != self.actualvalue["connect"]:
-            if self.setpoint["connect"]:
-                self.actualvalue["connect"] = True
-                self.start()
-                self.selfrestart = True
-            elif not self.setpoint["connect"]:
-                self.actualvalue["connect"] = False
-                self.stop()
-                self.selfrestart = False
-        elif write2dev:
-            print(('write "%s"\n' % write2dev_string))
-            self.device.write(write2dev_string.encode("utf-8"))
-        if restart and selfrestart and self.isgui:
-            if self.updateid:
-                self.start_button.after_cancel(self.updateid)
-            self.updateid = self.start_button.after(
-                self.update_intervall, func=self.update
-            )  # call after ... milliseconds
-
-    def gui(self):
-        self.isgui = True
-        self.start_button = tk.Button(self.pw, text="open", command=self.start_request, padx=self.padx, pady=self.pady)
-        self.start_button.grid(row=0, column=0)
-        self.stop_button = tk.Button(
-            self.pw, text="close", command=self.stop_request, state=tk.DISABLED, padx=self.padx, pady=self.pady
-        )
-        self.stop_button.grid(row=0, column=1)
-        self.set_default_values()
-
-    def start_request(self):
-        self.setpoint["connect"] = True
-        if self.isgui:
-            if self.updateid:
-                self.start_button.after_cancel(self.updateid)
-            self.updateid = self.update()
-
-    def start(self):
-        self.debugprint("start translation stage controlling on port %s" % self.devicename)
+        self.log.debug("Starting translation stage controlling on port %s" % self.devicename)
         try:
             self.device.open()
             self.device.write(b"\x01\x8b\x00\x00\x00\x00\x00\x00\x8c\r")  # 0x018b 0x0000 0x0000 0x0000 0x8c
-            self.actualvalue["connect"] = True
-            self.setpoint["connect"] = True
-            self.debugprint("connect")
+            self.connected = True
+            self.log.debug("Connected")
+            return True
         except Exception:
-            self.actualvalue["connect"] = False
-            self.setpoint["connect"] = False
-            self.debugprint("cannot connect")
-        if self.isgui:
-            if self.updateid:
-                self.start_button.after_cancel(self.updateid)
-            self.updateid = self.update()
-            self.start_button.configure(state=tk.DISABLED)
-            self.stop_button.configure(state=tk.NORMAL)
+            self.connected = False
+            self.log.debug("Cannot connect")
+            return False
 
-    def check_buttons(self):
-        if self.isgui:
-            if self.actualvalue["connect"]:
-                self.start_button.configure(state=tk.DISABLED)
-                self.stop_button.configure(state=tk.NORMAL)
-            else:
-                self.start_button.configure(state=tk.NORMAL)
-                self.stop_button.configure(state=tk.DISABLED)
-
-    def stop_request(self):
-        self.setpoint["connect"] = False
-        if self.isgui:
-            if self.updateid:
-                self.start_button.after_cancel(self.updateid)
-            self.updateid = self.update()
-
-    def stop(self):
+    def stop(self) -> bool:
         if self.device.is_open:
             self.device.close()
-            self.actualvalue["connect"] = False
-            self.setpoint["connect"] = False
-            self.debugprint("stop translation stage controlling on port %s" % self.devicename)
+            self.connected = False
+            self.log.debug("Stopped translation stage controlling on port %s" % self.devicename)
         else:
-            self.actualvalue["connect"] = False
-            self.setpoint["connect"] = False
+            self.connected = False
+        return True
